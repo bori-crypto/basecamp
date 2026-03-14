@@ -1,115 +1,225 @@
-import React from 'react';
+import React, { useState, createContext, useContext, useMemo } from 'react';
 import { 
-  Sun, Calendar, TrendingUp, DollarSign, ChevronRight, 
-  Cloud, CloudRain, Wind, Loader2, AlertTriangle 
+  Activity, Map as MapIcon, BarChart2, 
+  Shield, ShieldOff, ChevronRight, 
+  Settings, Database, Server, Clock,
+  ChevronLeft, Home, Layers
 } from 'lucide-react';
 
-// ----------------------------------------------------------------------
-// 💡 미니 차트 부품 (RegionA 전용)
-// ----------------------------------------------------------------------
-const MiniSparkline = ({ data, color }) => {
-  if (!data || !Array.isArray(data) || data.length === 0) return null;
-  const min = Math.min(...data);
-  const max = Math.max(...data);
-  const range = max - min || 1; 
-  const points = data.map((val, i) => {
-    const x = (i / (data.length - 1)) * 100;
-    const y = 100 - ((val - min) / range) * 100;
-    return `${x},${y}`;
-  }).join(' L ');
+// ==========================================
+// 1. 전역 상태 (Context) - 라우팅 및 보안 모드
+// ==========================================
+const AppContext = createContext();
+
+const AppProvider = ({ children }) => {
+  const [isPrivateMode, setIsPrivateMode] = useState(false);
+  const [history, setHistory] = useState([{ id: 'home', title: 'Dashboard', icon: Home }]);
+
+  const togglePrivateMode = () => setIsPrivateMode(!isPrivateMode);
+  
+  const pushPage = (id, title, icon) => {
+    setHistory(prev => [...prev, { id, title, icon }]);
+  };
+
+  const popPage = () => {
+    if (history.length > 1) {
+      setHistory(prev => prev.slice(0, -1));
+    }
+  };
+
+  const jumpTo = (index) => {
+    setHistory(prev => prev.slice(0, index + 1));
+  };
+
+  const currentPage = useMemo(() => history[history.length - 1], [history]);
 
   return (
-    <svg width="100%" height="40" viewBox="0 0 100 100" preserveAspectRatio="none" className="overflow-visible">
-      <defs>
-        <linearGradient id={`grad-${color}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity={0.2} />
-          <stop offset="100%" stopColor={color} stopOpacity={0} />
-        </linearGradient>
-      </defs>
-      <path d={`M 0,100 L 0,${100 - ((data[0] - min) / range) * 100} L ${points} L 100,100 Z`} fill={`url(#grad-${color})`} stroke="none" />
-      <path d={`M ${points}`} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
+    <AppContext.Provider value={{ 
+      isPrivateMode, togglePrivateMode, 
+      history, currentPage, pushPage, popPage, jumpTo 
+    }}>
+      {children}
+    </AppContext.Provider>
   );
 };
 
-// ----------------------------------------------------------------------
-// 🚀 RegionA 메인 컴포넌트
-// ----------------------------------------------------------------------
-const RegionA = ({ data, loading, error, onRetry, onScheduleClick }) => {
-  const today = new Date();
-  const dateStr = `${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
-  const dayStr = today.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+// ==========================================
+// 2. 브레드크럼 컴포넌트 (Navigation Trail)
+// ==========================================
+const Breadcrumbs = () => {
+  const { history, jumpTo, popPage } = useContext(AppContext);
 
-  // 1. 로딩 상태 UI
-  if (loading) return (
-    <div className="flex flex-col items-center justify-center h-full opacity-40 py-10">
-      <Loader2 className="animate-spin mb-3 text-indigo-400" size={32} />
-      <p className="text-[10px] font-black uppercase tracking-[0.3em]">Region_A Syncing</p>
-    </div>
-  );
-
-  // 2. 에러 상태 UI
-  if (error) return (
-    <div className="flex flex-col items-center justify-center h-full text-rose-400 py-10 px-4">
-      <AlertTriangle className="mb-3 opacity-40" size={32} />
-      <button onClick={onRetry} className="text-[10px] font-black border border-rose-500/30 px-5 py-2.5 rounded-2xl hover:bg-rose-500/10 transition-all uppercase tracking-widest leading-none">Retry Link</button>
-    </div>
-  );
-
-  const s = data?.summary || {};
+  if (history.length <= 1) return null;
 
   return (
-    <div className="grid grid-cols-2 gap-4 animate-in fade-in zoom-in-95 duration-700">
-      {/* 1. 날씨 섹션 */}
-      <div className="bg-slate-900/40 p-5 rounded-[2.5rem] border border-white/5 flex flex-col justify-between hover:border-white/10 transition-colors">
-        <div className="flex justify-between items-start">
-          <span className="text-3xl font-black tracking-tighter text-slate-100">{s.temp || '--'}</span>
-          <Sun className="text-yellow-400 w-6 h-6" />
-        </div>
-        <div className="flex items-center gap-1.5 text-sky-400 text-[10px] font-black uppercase tracking-tighter">
-          <Wind size={12} /> {s.windSpeed || '0.0m/s'}
-        </div>
-      </div>
-
-      {/* 2. 일정 섹션 */}
-      <div 
-        onClick={onScheduleClick}
-        className="bg-indigo-500/10 p-5 rounded-[2.5rem] border border-indigo-500/20 flex flex-col justify-between cursor-pointer hover:bg-indigo-500/20 transition-all group/sch"
+    <div className="flex items-center space-x-2 mb-8 animate-in fade-in slide-in-from-left-4 duration-700 px-2">
+      <button 
+        onClick={popPage}
+        className="mr-2 p-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-all border border-white/10 shadow-lg"
       >
-        <div className="flex justify-between items-center text-indigo-400">
-          <span className="text-[11px] font-black tracking-widest uppercase">{dateStr} {dayStr}</span>
-          <ChevronRight size={14} className="group-hover/sch:translate-x-1 transition-transform" />
-        </div>
-        <div className="text-3xl font-black text-slate-100 leading-none flex items-baseline gap-1.5">
-          {s.leftToday || '0'}<span className="text-[10px] font-bold text-indigo-400 uppercase tracking-tighter">Items</span>
-        </div>
-      </div>
-
-      {/* 3. 주가 섹션 */}
-      <div className="bg-slate-900/40 p-5 rounded-[2.5rem] border border-white/5 flex flex-col justify-between relative overflow-hidden group/mkt">
-        <div className="flex justify-between items-start relative z-10">
-          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{s.marketIndex?.name || 'Index'}</span>
-          <span className={`text-[10px] font-black ${s.marketIndex?.isUp ? 'text-emerald-400' : 'text-rose-400'}`}>{s.marketIndex?.change || '0.0%'}</span>
-        </div>
-        <div className="text-xl font-bold text-slate-100 relative z-10 tracking-tight">{s.marketIndex?.value || '--'}</div>
-        <div className="absolute bottom-0 left-0 right-0 h-1/2 opacity-20 pointer-events-none">
-          <MiniSparkline data={s.marketIndex?.trend} color={s.marketIndex?.isUp ? '#10b981' : '#f43f5e'} />
-        </div>
-      </div>
-
-      {/* 4. 환율 섹션 */}
-      <div className="bg-slate-900/40 p-5 rounded-[2.5rem] border border-white/5 flex flex-col justify-between">
-        <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
-          <DollarSign size={10} /> USD/KRW
-        </div>
-        <div className="text-xl font-bold text-slate-100 tracking-tighter">{s.exchange?.rate || '--'}</div>
-        <div className="text-[10px] font-bold text-rose-500 flex items-center gap-1">
-           <span className="w-1 h-1 rounded-full bg-rose-500 animate-pulse"></span>
-           {s.exchange?.change || '0.0'}
-        </div>
+        <ChevronLeft size={20} />
+      </button>
+      
+      <div className="flex items-center space-x-1 bg-slate-800/40 backdrop-blur-xl px-5 py-2.5 rounded-[1.25rem] border border-white/15 shadow-2xl">
+        {history.map((step, idx) => (
+          <React.Fragment key={step.id}>
+            <button 
+              onClick={() => jumpTo(idx)}
+              className={`flex items-center space-x-2 text-[10px] font-black uppercase tracking-[0.2em] transition-all
+                ${idx === history.length - 1 ? 'text-indigo-400' : 'text-slate-300 hover:text-slate-100'}`}
+            >
+              {step.icon && <step.icon size={12} />}
+              <span>{step.title}</span>
+            </button>
+            {idx < history.length - 1 && (
+              <span className="text-slate-600 px-1 font-light opacity-50">/</span>
+            )}
+          </React.Fragment>
+        ))}
       </div>
     </div>
   );
 };
 
-export default RegionA;
+// ==========================================
+// 3. 레이아웃 컴포넌트
+// ==========================================
+const Layout = ({ children }) => {
+  const { isPrivateMode, togglePrivateMode, pushPage } = useContext(AppContext);
+
+  return (
+    <div className="min-h-screen bg-[#0a0f1d] text-slate-50 font-sans selection:bg-indigo-500/30 overflow-hidden relative flex flex-col">
+      
+      {/* Floating Security Toggle */}
+      <div className="fixed top-4 right-6 z-50">
+        <button 
+          onClick={togglePrivateMode}
+          className={`flex items-center space-x-2 px-4 py-2 rounded-full text-[10px] font-black tracking-[0.15em] transition-all duration-500 border backdrop-blur-xl shadow-2xl
+            ${isPrivateMode 
+              ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' 
+              : 'bg-slate-800/40 text-slate-400 border-white/10 hover:border-white/20'}`}
+        >
+          {isPrivateMode ? <Shield size={12} className="animate-pulse" /> : <ShieldOff size={12} />}
+          <span>{isPrivateMode ? 'ADMIN_SECURE' : 'GUEST_ACCESS'}</span>
+        </button>
+      </div>
+
+      {/* Main Content Area */}
+      <main className="flex-1 overflow-y-auto relative p-4 lg:p-10">
+        <div className="w-full max-w-[1600px] mx-auto h-full flex flex-col pt-6">
+          <Breadcrumbs />
+          <div className="flex-1">
+            {children}
+          </div>
+        </div>
+      </main>
+
+      {/* Admin Gear */}
+      <div className="fixed bottom-6 right-6 z-50 opacity-40 hover:opacity-100 transition-opacity">
+        <button 
+          onClick={() => pushPage('settings', 'System Config', Settings)} 
+          className="p-3 bg-slate-900/80 rounded-full border border-white/10 text-slate-400 hover:text-white backdrop-blur-md"
+        >
+          <Settings size={18} />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ==========================================
+// 4. 위젯 카드 컴포넌트
+// ==========================================
+const WidgetCard = ({ children }) => (
+  <div 
+    style={{ background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' }}
+    className="backdrop-blur-2xl border border-white/10 rounded-[3rem] p-10 lg:p-14
+      hover:border-indigo-400/40 transition-all duration-500 cursor-pointer
+      group flex flex-col h-full min-h-[360px] lg:min-h-[420px] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.6)]
+      active:scale-[0.98] active:duration-150"
+  >
+    <div className="flex-1 flex flex-col justify-center">
+      {children}
+    </div>
+  </div>
+);
+
+// ==========================================
+// 5. 페이지 컴포넌트
+// ==========================================
+
+const Dashboard = () => {
+  const { pushPage } = useContext(AppContext);
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 py-2 animate-in fade-in zoom-in-95 duration-1000">
+      <WidgetCard>
+      </WidgetCard>
+
+      <WidgetCard>
+      </WidgetCard>
+
+      <WidgetCard>
+      </WidgetCard>
+
+      <WidgetCard>
+      </WidgetCard>
+    </div>
+  );
+};
+
+// --- SUB-PAGE (모바일 밝기 개선 버전) ---
+const SubPage = ({ id, title, icon: Icon }) => {
+  const { pushPage } = useContext(AppContext);
+
+  return (
+    <div 
+      style={{ background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.9) 100%)' }}
+      className="h-full min-h-[60vh] flex flex-col items-center justify-center border border-white/20 rounded-[4rem] backdrop-blur-3xl animate-in slide-in-from-bottom-4 fade-in duration-700 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.8)]"
+    >
+      <div className="w-28 h-28 rounded-[2.5rem] bg-indigo-500/20 border border-white/20 flex items-center justify-center text-indigo-300 mb-8 shadow-2xl shadow-indigo-500/20 group">
+        <Icon size={56} className="group-hover:scale-110 transition-transform duration-500" />
+      </div>
+      
+      <h2 className="text-5xl font-black text-slate-50 mb-4 uppercase tracking-tighter italic text-center drop-shadow-2xl">
+        {title}
+      </h2>
+      
+      <p className="text-slate-200 mb-12 max-w-sm text-center text-[12px] font-black uppercase tracking-[0.3em] leading-relaxed drop-shadow-md">
+        Interactive Workspace <br/>
+        Layer: <span className="text-indigo-400">{id.toUpperCase()}</span>
+      </p>
+      
+      <div className="flex flex-wrap justify-center gap-4">
+        <button 
+          onClick={() => pushPage(`${id}-detail`, `${title} Details`, Layers)}
+          className="px-14 py-5 bg-indigo-500 hover:bg-indigo-400 text-white border border-indigo-300/30 rounded-[2rem] transition-all font-black text-[11px] uppercase tracking-[0.25em] shadow-[0_20px_50px_-10px_rgba(79,70,229,0.6)] active:scale-95"
+        >
+          Explore Deeper
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const AppContent = () => {
+  const { currentPage } = useContext(AppContext);
+
+  return (
+    <Layout>
+      {currentPage.id === 'home' ? (
+        <Dashboard />
+      ) : (
+        <SubPage id={currentPage.id} title={currentPage.title} icon={currentPage.icon} />
+      )}
+    </Layout>
+  );
+};
+
+export default function App() {
+  return (
+    <AppProvider>
+      <AppContent />
+    </AppProvider>
+  );
+}
