@@ -1,3 +1,12 @@
+import React from 'react';
+import { 
+  Sun, Calendar, TrendingUp, DollarSign, ChevronRight, 
+  Cloud, CloudRain, Wind, Loader2, AlertTriangle 
+} from 'lucide-react';
+
+// ----------------------------------------------------------------------
+// 💡 미니 차트 부품 (RegionA 전용)
+// ----------------------------------------------------------------------
 const MiniSparkline = ({ data, color }) => {
   if (!data || !Array.isArray(data) || data.length === 0) return null;
   const min = Math.min(...data);
@@ -23,11 +32,15 @@ const MiniSparkline = ({ data, color }) => {
   );
 };
 
+// ----------------------------------------------------------------------
+// 🚀 RegionA 메인 컴포넌트
+// ----------------------------------------------------------------------
 const RegionA = ({ data, loading, error, onRetry, onScheduleClick }) => {
   const today = new Date();
   const dateStr = `${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
   const dayStr = today.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
 
+  // 1. 로딩 상태 UI
   if (loading) return (
     <div className="flex flex-col items-center justify-center h-full opacity-40 py-10">
       <Loader2 className="animate-spin mb-3 text-indigo-400" size={32} />
@@ -35,10 +48,11 @@ const RegionA = ({ data, loading, error, onRetry, onScheduleClick }) => {
     </div>
   );
 
+  // 2. 에러 상태 UI
   if (error) return (
-    <div className="flex flex-col items-center justify-center h-full text-rose-400 py-10">
+    <div className="flex flex-col items-center justify-center h-full text-rose-400 py-10 px-4">
       <AlertTriangle className="mb-3 opacity-40" size={32} />
-      <button onClick={onRetry} className="text-[10px] font-black border border-rose-500/30 px-5 py-2.5 rounded-2xl hover:bg-rose-500/10 transition-all uppercase tracking-widest">Retry Connection</button>
+      <button onClick={onRetry} className="text-[10px] font-black border border-rose-500/30 px-5 py-2.5 rounded-2xl hover:bg-rose-500/10 transition-all uppercase tracking-widest leading-none">Retry Link</button>
     </div>
   );
 
@@ -46,7 +60,7 @@ const RegionA = ({ data, loading, error, onRetry, onScheduleClick }) => {
 
   return (
     <div className="grid grid-cols-2 gap-4 animate-in fade-in zoom-in-95 duration-700">
-      {/* Weather */}
+      {/* 1. 날씨 섹션 */}
       <div className="bg-slate-900/40 p-5 rounded-[2.5rem] border border-white/5 flex flex-col justify-between hover:border-white/10 transition-colors">
         <div className="flex justify-between items-start">
           <span className="text-3xl font-black tracking-tighter text-slate-100">{s.temp || '--'}</span>
@@ -57,7 +71,7 @@ const RegionA = ({ data, loading, error, onRetry, onScheduleClick }) => {
         </div>
       </div>
 
-      {/* Schedule */}
+      {/* 2. 일정 섹션 */}
       <div 
         onClick={onScheduleClick}
         className="bg-indigo-500/10 p-5 rounded-[2.5rem] border border-indigo-500/20 flex flex-col justify-between cursor-pointer hover:bg-indigo-500/20 transition-all group/sch"
@@ -71,7 +85,7 @@ const RegionA = ({ data, loading, error, onRetry, onScheduleClick }) => {
         </div>
       </div>
 
-      {/* Market */}
+      {/* 3. 주가 섹션 */}
       <div className="bg-slate-900/40 p-5 rounded-[2.5rem] border border-white/5 flex flex-col justify-between relative overflow-hidden group/mkt">
         <div className="flex justify-between items-start relative z-10">
           <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{s.marketIndex?.name || 'Index'}</span>
@@ -83,7 +97,7 @@ const RegionA = ({ data, loading, error, onRetry, onScheduleClick }) => {
         </div>
       </div>
 
-      {/* Exchange */}
+      {/* 4. 환율 섹션 */}
       <div className="bg-slate-900/40 p-5 rounded-[2.5rem] border border-white/5 flex flex-col justify-between">
         <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
           <DollarSign size={10} /> USD/KRW
@@ -97,3 +111,5 @@ const RegionA = ({ data, loading, error, onRetry, onScheduleClick }) => {
     </div>
   );
 };
+
+export default RegionA;
