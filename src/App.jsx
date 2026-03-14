@@ -60,19 +60,19 @@ const Breadcrumbs = () => {
         <ChevronLeft size={20} />
       </button>
       
-      <div className="flex items-center space-x-1 bg-slate-900/60 backdrop-blur-xl px-5 py-2.5 rounded-[1.25rem] border border-white/10 shadow-2xl">
+      <div className="flex items-center space-x-1 bg-slate-800/40 backdrop-blur-xl px-5 py-2.5 rounded-[1.25rem] border border-white/15 shadow-2xl">
         {history.map((step, idx) => (
           <React.Fragment key={step.id}>
             <button 
               onClick={() => jumpTo(idx)}
               className={`flex items-center space-x-2 text-[10px] font-black uppercase tracking-[0.2em] transition-all
-                ${idx === history.length - 1 ? 'text-indigo-400' : 'text-slate-400 hover:text-slate-200'}`}
+                ${idx === history.length - 1 ? 'text-indigo-400' : 'text-slate-300 hover:text-slate-100'}`}
             >
               {step.icon && <step.icon size={12} />}
               <span>{step.title}</span>
             </button>
             {idx < history.length - 1 && (
-              <span className="text-slate-700 px-1 font-light opacity-50">/</span>
+              <span className="text-slate-600 px-1 font-light opacity-50">/</span>
             )}
           </React.Fragment>
         ))}
@@ -114,7 +114,7 @@ const Layout = ({ children }) => {
         </div>
       </main>
 
-      {/* Admin Gear with increased visibility */}
+      {/* Admin Gear */}
       <div className="fixed bottom-6 right-6 z-50 opacity-40 hover:opacity-100 transition-opacity">
         <button 
           onClick={() => pushPage('settings', 'System Config', Settings)} 
@@ -128,16 +128,16 @@ const Layout = ({ children }) => {
 };
 
 // ==========================================
-// 4. 위젯 카드 컴포넌트 (모바일 밝기 개선 버전)
+// 4. 위젯 카드 컴포넌트
 // ==========================================
 const WidgetCard = ({ title, icon: Icon, onClick, children }) => (
   <div 
     onClick={onClick}
-    style={{ background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' }} // 시작점을 밝게 조정
+    style={{ background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' }}
     className="backdrop-blur-2xl border border-white/10 rounded-[3rem] p-10 lg:p-14
       hover:border-indigo-400/40 transition-all duration-500 cursor-pointer
       group flex flex-col h-full min-h-[360px] lg:min-h-[420px] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.6)]
-      active:scale-[0.98] active:duration-150" // 모바일 터치 피드백 추가
+      active:scale-[0.98] active:duration-150"
   >
     <div className="flex items-center justify-between mb-10">
       <div className="flex items-center space-x-5 text-slate-400 group-hover:text-indigo-300 transition-all duration-500 group-hover:translate-x-1">
@@ -170,12 +170,12 @@ const Dashboard = () => {
           <div className="relative">
             <div className="absolute -left-[24px] top-2 w-4 h-4 bg-indigo-500 rounded-full ring-4 ring-[#1e293b] shadow-[0_0_20px_rgba(99,102,241,0.6)]"></div>
             <p className="text-lg font-black text-slate-100 uppercase tracking-tighter">System Evolution</p>
-            <p className="text-sm text-slate-400 font-medium tracking-tight">Brightness Optimized V1.3</p>
+            <p className="text-sm text-slate-400 font-medium tracking-tight">Visibility Optimized</p>
           </div>
         </div>
         {isPrivateMode && (
           <div className="mt-8 p-6 bg-emerald-500/10 border border-emerald-500/20 rounded-3xl text-xs text-emerald-300 leading-relaxed italic animate-in slide-in-from-top-2 duration-500">
-            "오빠, 이제 모바일에서도 위젯이 선명하게 보일 거야. 가독성 위주로 톤을 살짝 올렸어!"
+            "오빠, 서브 페이지도 이제 쨍하게 보일 거야!"
           </div>
         )}
       </WidgetCard>
@@ -226,24 +226,32 @@ const Dashboard = () => {
   );
 };
 
+// --- SUB-PAGE (모바일 밝기 개선 버전) ---
 const SubPage = ({ id, title, icon: Icon }) => {
   const { pushPage } = useContext(AppContext);
 
   return (
-    <div className="h-full min-h-[60vh] flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-[4rem] bg-slate-900/40 animate-in slide-in-from-bottom-4 fade-in duration-700">
-      <div className="w-24 h-24 rounded-[2.5rem] bg-indigo-500/10 border border-white/10 flex items-center justify-center text-indigo-400 mb-8 shadow-2xl shadow-indigo-500/10 group">
-        <Icon size={48} className="group-hover:scale-110 transition-transform duration-500" />
+    <div 
+      style={{ background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.9) 100%)' }}
+      className="h-full min-h-[60vh] flex flex-col items-center justify-center border border-white/20 rounded-[4rem] backdrop-blur-3xl animate-in slide-in-from-bottom-4 fade-in duration-700 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.8)]"
+    >
+      <div className="w-28 h-28 rounded-[2.5rem] bg-indigo-500/20 border border-white/20 flex items-center justify-center text-indigo-300 mb-8 shadow-2xl shadow-indigo-500/20 group">
+        <Icon size={56} className="group-hover:scale-110 transition-transform duration-500" />
       </div>
-      <h2 className="text-5xl font-black text-white mb-4 uppercase tracking-tighter italic">{title}</h2>
-      <p className="text-slate-400 mb-10 max-w-sm text-center text-[11px] font-black uppercase tracking-[0.3em] leading-relaxed">
+      
+      <h2 className="text-5xl font-black text-slate-50 mb-4 uppercase tracking-tighter italic text-center drop-shadow-2xl">
+        {title}
+      </h2>
+      
+      <p className="text-slate-200 mb-12 max-w-sm text-center text-[12px] font-black uppercase tracking-[0.3em] leading-relaxed drop-shadow-md">
         Interactive Workspace <br/>
-        Layer: {id.toUpperCase()}
+        Layer: <span className="text-indigo-400">{id.toUpperCase()}</span>
       </p>
       
       <div className="flex flex-wrap justify-center gap-4">
         <button 
           onClick={() => pushPage(`${id}-detail`, `${title} Details`, Layers)}
-          className="px-12 py-4.5 bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-400/30 rounded-[1.5rem] transition-all font-black text-[10px] uppercase tracking-[0.2em] shadow-[0_20px_40px_-10px_rgba(79,70,229,0.4)]"
+          className="px-14 py-5 bg-indigo-500 hover:bg-indigo-400 text-white border border-indigo-300/30 rounded-[2rem] transition-all font-black text-[11px] uppercase tracking-[0.25em] shadow-[0_20px_50px_-10px_rgba(79,70,229,0.6)] active:scale-95"
         >
           Explore Deeper
         </button>
