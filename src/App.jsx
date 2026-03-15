@@ -134,7 +134,7 @@ const WidgetCard = ({ children, onClick }) => (
   <div 
     onClick={onClick} 
     style={{ background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' }} 
-    className="backdrop-blur-2xl border border-white/10 rounded-[2rem] lg:rounded-[3rem] p-5 lg:p-14 landscape:p-4 md:landscape:p-5 lg:landscape:p-14 hover:border-indigo-400/40 transition-all cursor-pointer group flex flex-col h-full min-h-[240px] lg:min-h-[420px] landscape:min-h-[160px] md:landscape:min-h-[240px] lg:landscape:min-h-[420px] w-full touch-manipulation"
+    className="backdrop-blur-2xl border border-white/10 rounded-[2rem] lg:rounded-[3rem] p-5 lg:p-14 landscape:p-4 lg:landscape:p-14 hover:border-indigo-400/40 transition-all cursor-pointer group flex flex-col h-full min-h-[240px] lg:min-h-[420px] landscape:min-h-[160px] lg:landscape:min-h-[420px] w-full touch-manipulation"
   >
     <div className="flex-1 flex flex-col justify-center w-full">{children}</div>
   </div>
