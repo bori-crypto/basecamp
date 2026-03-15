@@ -5,16 +5,7 @@ import {
   ArrowUpRight, ArrowDownRight
 } from 'lucide-react';
 
-// --- 데이터 상수 ---
-const WEATHER_DATA = {
-  current: { temp: 12, wind: 3.2, windDir: 'NW' },
-  forecast: [
-    { day: 'Mon', temp: 14, icon: <Sun size={12} /> },
-    { day: 'Tue', temp: 11, icon: <Cloud size={12} /> },
-    { day: 'Wed', temp: 9, icon: <CloudRain size={12} /> },
-  ]
-};
-
+// --- API 연동 전인 데이터는 유지 ---
 const TODO_DATA = [
   { id: 1, text: '주간 보고서 작성', done: false, date: '03.15' },
   { id: 2, text: '신규 프로젝트 미팅', done: true, date: '03.16' },
@@ -22,51 +13,50 @@ const TODO_DATA = [
   { id: 4, text: '러닝 5km', done: false, date: '03.18' },
 ];
 
-const STOCK_DATA = {
-  index: "2,645.20",
-  change: "+12.45",
-  percent: "0.47%",
-  points: [10, 25, 15, 40, 35, 60, 55, 80, 75, 90]
-};
-
 const CURRENCY_DATA = {
   rate: "1,342.50",
   change: "2.10",
 };
 
-export default function App() {
+const FORECAST_MOCK = [
+  { day: 'Mon', temp: 14, icon: <Sun size={12} /> },
+  { day: 'Tue', temp: 11, icon: <Cloud size={12} /> },
+  { day: 'Wed', temp: 9, icon: <CloudRain size={12} /> },
+];
+
+export default function Regiona({ data }) {
   const [isListOpen, setIsListOpen] = useState(false);
   const remainingTodos = TODO_DATA.filter(t => !t.done).length;
 
+  // --- 실시간 데이터 연결 (데이터가 없으면 기본값 표시) ---
+  const weather = data?.weather || { temp: "--", wind: "--", windDir: "--" };
+  const stock = data?.stock || { index: "----.--", change: "--", percent: "--" };
+
   return (
-    /* gap을 줄여 위젯 간격을 밀착시키고 전체 공간 활용 극대화 */
     <div className="w-full h-full grid grid-cols-2 grid-rows-2 gap-2 font-sans text-slate-200 overflow-hidden">
       
-      {/* 위젯 1: 날씨 */}
+      {/* 위젯 1: 날씨 (실시간 연동) */}
       <section className="rounded-3xl bg-slate-800/40 border border-white/10 p-3 md:p-5 flex flex-col justify-between shadow-xl backdrop-blur-md overflow-hidden">
         <div className="flex justify-between items-center gap-1">
-          {/* 온도 */}
           <div className="flex items-center gap-1 md:gap-2">
             <Sun className="text-yellow-400 w-5 h-5 md:w-8 md:h-8 shrink-0" />
-            <span className="text-lg sm:text-2xl md:text-3xl font-black text-white leading-none">{WEATHER_DATA.current.temp}°</span>
+            <span className="text-lg sm:text-2xl md:text-3xl font-black text-white leading-none">{weather.temp}°</span>
           </div>
-          {/* 바람 */}
           <div className="flex items-center gap-1 md:gap-2 text-blue-300 min-w-0">
             <Wind className="w-5 h-5 md:w-8 md:h-8 shrink-0" />
             <div className="flex flex-col items-start leading-none min-w-0">
               <div className="flex items-baseline gap-0.5">
-                <span className="text-lg sm:text-2xl md:text-3xl font-black text-white truncate">{WEATHER_DATA.current.wind}</span>
+                <span className="text-lg sm:text-2xl md:text-3xl font-black text-white truncate">{weather.wind}</span>
                 <span className="text-[7px] md:text-[9px] font-medium text-slate-500 uppercase">m/s</span>
               </div>
               <span className="text-[9px] md:text-xs font-bold text-blue-300/80 uppercase truncate w-full">
-                {WEATHER_DATA.current.windDir}
+                {weather.windDir}
               </span>
             </div>
           </div>
         </div>
-        
         <div className="flex justify-between items-center bg-white/5 rounded-xl p-2 md:p-3 mt-2">
-          {WEATHER_DATA.forecast.map((f, i) => (
+          {FORECAST_MOCK.map((f, i) => (
             <div key={i} className="flex flex-col items-center gap-0.5">
               <span className="text-[7px] md:text-[9px] text-slate-400 uppercase font-bold">{f.day}</span>
               <div className="scale-75 md:scale-90">{f.icon}</div>
@@ -76,7 +66,7 @@ export default function App() {
         </div>
       </section>
 
-      {/* 위젯 2: 할 일 (글자 크기를 박스에 맞춰 유동적으로 조절) */}
+      {/* 위젯 2: 할 일 */}
       <section 
         role="button"
         onClick={() => setIsListOpen(!isListOpen)}
@@ -86,12 +76,10 @@ export default function App() {
           <div className="h-full flex flex-col justify-center gap-3">
             <div className="flex items-center gap-2 overflow-hidden">
               <Calendar className="text-blue-400 shrink-0 w-5 h-5 md:w-7 md:h-7" />
-              {/* 텍스트 크기를 대폭 낮추고 가변적으로 설정하여 이탈 방지 */}
               <span className="text-base sm:text-xl md:text-2xl lg:text-3xl font-black tracking-tighter text-white whitespace-nowrap leading-none truncate">
                 2026.3.15. (일)
               </span>
             </div>
-            
             <div className="flex items-center gap-2 text-blue-300 bg-blue-500/10 w-fit px-2.5 py-1 md:px-4 md:py-2 rounded-lg md:rounded-xl border border-blue-500/20">
               <CheckCircle2 size={14} className="md:w-5 md:h-5" />
               <span className="text-[10px] md:text-base font-bold whitespace-nowrap">{remainingTodos}개 남음</span>
@@ -115,20 +103,19 @@ export default function App() {
         )}
       </section>
 
-      {/* 위젯 3: 주가지수 */}
+      {/* 위젯 3: 주가지수 (실시간 연동) */}
       <section className="rounded-3xl bg-slate-800/40 border border-white/10 p-3 md:p-5 flex flex-col justify-between shadow-xl backdrop-blur-md overflow-hidden">
         <div className="flex justify-between items-start">
           <div className="min-w-0">
             <p className="text-slate-400 text-[7px] md:text-xs font-bold mb-0.5 uppercase tracking-tighter">KOSPI Index</p>
-            <h3 className="text-lg md:text-2xl lg:text-3xl font-black text-white truncate leading-none">{STOCK_DATA.index}</h3>
+            <h3 className="text-lg md:text-2xl lg:text-3xl font-black text-white truncate leading-none">{stock.index}</h3>
             <div className="flex items-center gap-0.5 text-emerald-400 text-[9px] md:text-sm mt-1 font-bold">
               <ArrowUpRight size={10} className="md:w-4 md:h-4" />
-              <span className="truncate">{STOCK_DATA.change} ({STOCK_DATA.percent})</span>
+              <span className="truncate">{stock.change} ({stock.percent}%)</span>
             </div>
           </div>
           <TrendingUp className="text-emerald-500/50 w-5 h-5 md:w-7 md:h-7 shrink-0" />
         </div>
-        
         <div className="h-10 md:h-14 w-full mt-2">
           <svg viewBox="0 0 100 40" preserveAspectRatio="none" className="w-full h-full overflow-visible">
             <defs>
@@ -138,16 +125,12 @@ export default function App() {
               </linearGradient>
             </defs>
             <path
-              d={`M ${STOCK_DATA.points.map((p, i) => `${i * 11.1},${40 - p * 0.4}`).join(' L ')}`}
+              d="M 0,30 L 10,25 L 20,35 L 30,20 L 40,25 L 50,15 L 60,20 L 70,10 L 80,15 L 90,5 L 100,10"
               fill="none"
               stroke="#10b981"
               strokeWidth="2.5"
               strokeLinecap="round"
               strokeLinejoin="round"
-            />
-            <path
-              d={`M 0,40 L ${STOCK_DATA.points.map((p, i) => `${i * 11.1},${40 - p * 0.4}`).join(' L ')} L 100,40 Z`}
-              fill="url(#stockGradient)"
             />
           </svg>
         </div>
@@ -167,7 +150,6 @@ export default function App() {
             <DollarSign className="text-blue-400 w-4 h-4 md:w-6 md:h-6 shrink-0" />
           </div>
         </div>
-        
         <div className="flex items-center justify-between border-t border-white/10 pt-2 mt-1">
           <div className="flex flex-col min-w-0">
             <span className="text-[7px] md:text-[10px] text-slate-500 uppercase font-black leading-none">Status</span>
@@ -184,23 +166,11 @@ export default function App() {
       </section>
 
       <style>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 2px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.1);
-          border-radius: 10px;
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(4px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-in {
-          animation: fadeIn 0.2s ease-out forwards;
-        }
+        .custom-scrollbar::-webkit-scrollbar { width: 2px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-in { animation: fadeIn 0.2s ease-out forwards; }
       `}</style>
     </div>
   );
