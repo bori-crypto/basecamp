@@ -2,10 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 글로벌 기본 설정 */
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+}
+
 body {
   margin: 0;
   padding: 0;
-  background-color: #0f172a;
 }
-
-::-webkit-scrollbar { display: none; } /* 스크롤바 숨김 */
