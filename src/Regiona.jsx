@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { 
-  Sun, CloudRain, Wind, Calendar, CheckCircle2, 
+  Sun, Wind, Calendar, CheckCircle2, 
   TrendingUp, DollarSign, ChevronLeft, Cloud, 
   ArrowUpRight, ArrowDownRight
 } from 'lucide-react';
 
-// --- API 연동 전인 데이터는 유지 ---
 const CURRENCY_DATA = {
   rate: "1,342.50",
   change: "2.10",
@@ -20,18 +19,18 @@ const FORECAST_MOCK = [
 export default function Regiona({ data }) {
   const [isListOpen, setIsListOpen] = useState(false);
 
-  // --- 실시간 데이터 연결 (데이터가 없으면 기본값 표시) ---
   const weather = data?.weather || { temp: "--", wind: "--", windDir: "--" };
   const stock = data?.stock || { index: "----.--", change: "--", percent: "--" };
   
-  // [수정] 구글 캘린더 일정 데이터 연결
-  const todos = data?.todo || []; 
-  const remainingTodos = todos.length;
+  // [보안 대응 로직] 데이터가 배열이면 length를, 객체면 count 값을 가져옴
+  const todos = data?.todo;
+  const remainingTodos = Array.isArray(todos) ? todos.length : (todos?.count || 0);
+  const todoList = Array.isArray(todos) ? todos : [];
 
   return (
     <div className="w-full h-full grid grid-cols-2 grid-rows-2 gap-2 font-sans text-slate-200 overflow-hidden">
       
-      {/* 위젯 1: 날씨 (실시간 연동) */}
+      {/* 위젯 1: 날씨 */}
       <section className="rounded-3xl bg-slate-800/40 border border-white/10 p-3 md:p-5 flex flex-col justify-between shadow-xl backdrop-blur-md overflow-hidden">
         <div className="flex justify-between items-center gap-1">
           <div className="flex items-center gap-1 md:gap-2">
@@ -62,7 +61,7 @@ export default function Regiona({ data }) {
         </div>
       </section>
 
-      {/* 위젯 2: 할 일 (구글 캘린더 실시간 연동) */}
+      {/* 위젯 2: 할 일 (데이터 구조 대응 완료) */}
       <section 
         role="button"
         onClick={() => setIsListOpen(!isListOpen)}
@@ -73,7 +72,6 @@ export default function Regiona({ data }) {
             <div className="flex items-center gap-2 overflow-hidden">
               <Calendar className="text-blue-400 shrink-0 w-5 h-5 md:w-7 md:h-7" />
               <span className="text-base sm:text-xl md:text-2xl lg:text-3xl font-black tracking-tighter text-white whitespace-nowrap leading-none truncate">
-                {/* 현재 날짜 표시 */}
                 {new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'numeric', day: 'numeric', weekday: 'short' })}
               </span>
             </div>
@@ -89,20 +87,22 @@ export default function Regiona({ data }) {
               <span className="text-[9px] md:text-xs font-black uppercase tracking-widest leading-none">Calendar</span>
             </div>
             <div className="space-y-1 overflow-y-auto pr-1 custom-scrollbar">
-              {todos.length > 0 ? todos.map((t, idx) => (
+              {todoList.length > 0 ? todoList.map((t, idx) => (
                 <div key={t.id || idx} className="flex items-center justify-between bg-white/5 p-1.5 md:p-2 rounded-lg border border-white/5">
                   <span className="text-[9px] md:text-xs truncate mr-1 text-slate-200 font-bold">{t.text}</span>
                   <span className="text-[7px] md:text-[9px] text-slate-500 font-mono shrink-0">{t.date}</span>
                 </div>
               )) : (
-                <div className="text-[9px] md:text-xs text-slate-500 text-center py-4">일정이 없습니다</div>
+                <div className="text-[9px] md:text-xs text-slate-500 text-center py-4">
+                  {Array.isArray(todos) ? "일정이 없습니다" : "인증이 필요합니다"}
+                </div>
               )}
             </div>
           </div>
         )}
       </section>
 
-      {/* 위젯 3: 주가지수 (실시간 연동) */}
+      {/* 위젯 3: 주가지수 */}
       <section className="rounded-3xl bg-slate-800/40 border border-white/10 p-3 md:p-5 flex flex-col justify-between shadow-xl backdrop-blur-md overflow-hidden">
         <div className="flex justify-between items-start">
           <div className="min-w-0">
