@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   Sun, Wind, Calendar, CheckCircle2, 
   TrendingUp, DollarSign, ChevronLeft, Cloud, 
-  ArrowUpRight, ArrowDownRight
+  CloudRain, ArrowUpRight, ArrowDownRight
 } from 'lucide-react';
 
 const CURRENCY_DATA = {
@@ -22,7 +22,6 @@ export default function Regiona({ data }) {
   const weather = data?.weather || { temp: "--", wind: "--", windDir: "--" };
   const stock = data?.stock || { index: "----.--", change: "--", percent: "--" };
   
-  // [보안 대응 로직] 데이터가 배열이면 length를, 객체면 count 값을 가져옴
   const todos = data?.todo;
   const remainingTodos = Array.isArray(todos) ? todos.length : (todos?.count || 0);
   const todoList = Array.isArray(todos) ? todos : [];
@@ -61,7 +60,7 @@ export default function Regiona({ data }) {
         </div>
       </section>
 
-      {/* 위젯 2: 할 일 (데이터 구조 대응 완료) */}
+      {/* 위젯 2: 할 일 */}
       <section 
         role="button"
         onClick={() => setIsListOpen(!isListOpen)}
