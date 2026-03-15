@@ -1,4 +1,4 @@
-import React, { useState, createContext, useContext, useMemo } from 'react';
+import React, { useState, createContext, useContext, useMemo, useEffect } from 'react';
 import { 
   Activity, Map as MapIcon, BarChart2, 
   Shield, ShieldOff, ChevronRight, 
@@ -14,6 +14,9 @@ const AppContext = createContext();
 const AppProvider = ({ children }) => {
   const [isPrivateMode, setIsPrivateMode] = useState(false);
   const [history, setHistory] = useState([{ id: 'home', title: 'Dashboard', icon: Home }]);
+  
+  // --- 실시간 데이터 상태 추가 ---
+  const [realTimeData, setRealTimeData] = useState(null);
 
   const togglePrivateMode = () => setIsPrivateMode(!isPrivateMode);
   const pushPage = (id, title, icon) => setHistory(prev => [...prev, { id, title, icon }]);
@@ -21,8 +24,31 @@ const AppProvider = ({ children }) => {
   const jumpTo = (index) => setHistory(prev => prev.slice(0, index + 1));
   const currentPage = useMemo(() => history[history.length - 1], [history]);
 
+  // --- Cloudflare Worker 데이터 호출 함수 ---
+  const fetchDashboardData = async () => {
+    try {
+      // 오빠가 준 워커 주소에 https://를 붙여서 적용했어!
+      const WORKER_URL = 'https://sparkling-credit-38ce.borimundi.workers.dev'; 
+      const response = await fetch(WORKER_URL);
+      if (!response.ok) throw new Error('데이터 호출 실패');
+      const json = await response.json();
+      setRealTimeData(json);
+    } catch (error) {
+      console.error("실시간 데이터 로드 오류:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+    const interval = setInterval(fetchDashboardData, 600000); // 10분마다 자동 갱신
+    return () => clearInterval(interval);
+  }, []);
+
   return (
-    <AppContext.Provider value={{ isPrivateMode, togglePrivateMode, history, currentPage, pushPage, popPage, jumpTo }}>
+    <AppContext.Provider value={{ 
+      isPrivateMode, togglePrivateMode, history, currentPage, 
+      pushPage, popPage, jumpTo, realTimeData 
+    }}>
       {children}
     </AppContext.Provider>
   );
@@ -51,7 +77,7 @@ const Breadcrumbs = () => {
 };
 
 const Layout = ({ children }) => {
-  const { isPrivateMode, togglePrivateMode, pushPage } = useContext(AppContext);
+  const { isPrivateMode, togglePrivateMode } = useContext(AppContext);
   return (
     <div className="min-h-[100dvh] w-full bg-[#0a0f1d] text-slate-50 font-sans flex flex-col overflow-x-hidden">
       <div className="fixed top-4 right-6 z-50">
@@ -80,12 +106,12 @@ const WidgetCard = ({ children, onClick }) => (
 );
 
 const Dashboard = () => {
-  const { pushPage } = useContext(AppContext);
+  const { pushPage, realTimeData } = useContext(AppContext);
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-12 py-2 w-full max-w-full">
-      {/* [여기가 좌상단 2*2 장소] - 불러온 Regiona를 꽂음 */}
+      {/* Regiona 컴포넌트에 realTimeData를 props로 전달 */}
       <WidgetCard onClick={() => pushPage('region-a', 'Region Alpha', Layers)}>
-        <Regiona />
+        <Regiona data={realTimeData} />
       </WidgetCard>
 
       <WidgetCard onClick={() => pushPage('analytics', 'Analytics', BarChart2)}>
