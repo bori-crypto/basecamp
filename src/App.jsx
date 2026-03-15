@@ -3,12 +3,13 @@ import {
   Activity, Map as MapIcon, BarChart2, 
   Shield, ShieldOff, ChevronRight, 
   Settings, Database, Server, Clock,
-  ChevronLeft, Home, Layers, Lock
+  ChevronLeft, Home, Layers, Lock, CloudSun, TrendingUp, DollarSign
 } from 'lucide-react';
 
 import Regiona from './Regiona';
 
-const AppContext = createContext();
+// Context 생성
+export const AppContext = createContext();
 
 const AppProvider = ({ children }) => {
   const [isPrivateMode, setIsPrivateMode] = useState(false);
@@ -129,11 +130,11 @@ const Layout = ({ children }) => {
   );
 };
 
-const WidgetCard = ({ children, onClick }) => (
+const WidgetCard = ({ children, onClick, noPadding = false }) => (
   <div 
     onClick={onClick} 
     style={{ background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' }} 
-    className="backdrop-blur-2xl border border-white/10 rounded-[2rem] lg:rounded-[3rem] p-5 lg:p-14 landscape:p-4 lg:landscape:p-14 hover:border-indigo-400/40 transition-all cursor-pointer group flex flex-col h-full min-h-[240px] lg:min-h-[420px] landscape:min-h-[160px] lg:landscape:min-h-[420px] w-full touch-manipulation"
+    className={`backdrop-blur-2xl border border-white/10 rounded-[2rem] lg:rounded-[3rem] ${noPadding ? '' : 'p-5 lg:p-14 landscape:p-4 lg:landscape:p-14'} hover:border-indigo-400/40 transition-all cursor-pointer group flex flex-col h-full min-h-[240px] lg:min-h-[420px] landscape:min-h-[160px] lg:landscape:min-h-[420px] w-full touch-manipulation`}
   >
     <div className="flex-1 flex flex-col justify-center w-full">{children}</div>
   </div>
@@ -143,21 +144,25 @@ const Dashboard = () => {
   const { pushPage, realTimeData } = useContext(AppContext);
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-12 py-2 w-full max-w-full">
-      <WidgetCard onClick={() => pushPage('region-a', 'Schedules', Layers)}>
+      {/* [수정] 첫 번째 위젯: 통클릭(onClick) 제거하고 내부 클릭을 위해 noPadding 적용 */}
+      <WidgetCard noPadding={true}>
         <Regiona data={realTimeData} />
       </WidgetCard>
+      
       <WidgetCard onClick={() => pushPage('analytics', 'Analytics', BarChart2)}>
         <div className="flex flex-col items-center text-slate-500">
            <BarChart2 size={40} className="mb-4 opacity-20" />
            <span className="text-[10px] font-black tracking-[0.2em] uppercase">Analytics Node</span>
         </div>
       </WidgetCard>
+      
       <WidgetCard onClick={() => pushPage('storage', 'Database', Database)}>
         <div className="flex flex-col items-center text-slate-500">
            <Database size={40} className="mb-4 opacity-20" />
            <span className="text-[10px] font-black tracking-[0.2em] uppercase">Storage Cluster</span>
         </div>
       </WidgetCard>
+      
       <WidgetCard onClick={() => pushPage('network', 'Network', Server)}>
         <div className="flex flex-col items-center text-slate-500">
            <Server size={40} className="mb-4 opacity-20" />
@@ -171,8 +176,8 @@ const Dashboard = () => {
 const AppContent = () => {
   const { currentPage, realTimeData } = useContext(AppContext);
 
-  // [수정] 오직 region-a(Schedules) 페이지만 관리자 인증을 확인하도록 로직 변경
-  if (currentPage.id === 'region-a') {
+  // [수정 핵심] 오직 'schedules-detail' ID로 접근할 때만 관리자 인증 확인
+  if (currentPage.id === 'schedules-detail') {
     const isAdminAuthenticated = Array.isArray(realTimeData?.todo);
 
     if (!isAdminAuthenticated) {
@@ -188,8 +193,13 @@ const AppContent = () => {
     }
   }
 
-  // 홈이면 대시보드, 그 외(analytics 등)는 해당 페이지 타이틀 표시 (게스트 허용)
-  return currentPage.id === 'home' ? <Dashboard /> : <div className="text-center py-20 text-3xl font-black">{currentPage.title} Page Ready</div>;
+  // 홈 화면이 아니면 모든 페이지를 게스트에게 오픈
+  return currentPage.id === 'home' ? <Dashboard /> : (
+    <div className="text-center py-20 animate-in fade-in">
+      <h1 className="text-4xl font-black uppercase tracking-tighter mb-4">{currentPage.title}</h1>
+      <p className="text-slate-500">상세 데이터 및 기능이 준비 중입니다.</p>
+    </div>
+  );
 };
 
 export default function App() {
