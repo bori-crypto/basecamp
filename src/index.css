@@ -7,7 +7,16 @@
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
 }
 
-body {
+html, body {
   margin: 0;
   padding: 0;
+  /* 모바일 스크롤 바운스 시 드러나는 기본 흰색 배경을 대시보드 색상으로 덮음 */
+  background-color: #0a0f1d;
+  color: #f8fafc;
+  /* 아이폰 당겨서 튕기는 효과(바운스) 원천 차단 */
+  overscroll-behavior-y: none;
+  /* 가로/세로 회전 시 브라우저가 임의로 폰트 크기 키우는 현상 방지 */
+  -webkit-text-size-adjust: 100%;
+  /* 모바일 터치 시 생기는 파란색/회색 하이라이트 박스 제거 */
+  -webkit-tap-highlight-color: transparent;
 }
