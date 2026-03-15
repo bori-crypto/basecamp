@@ -119,13 +119,13 @@ const Breadcrumbs = () => {
 const Layout = ({ children }) => {
   const { isPrivateMode, togglePrivateMode } = useContext(AppContext);
   return (
-    <div className="min-h-[100dvh] w-full bg-[#0a0f1d] text-slate-50 font-sans flex flex-col overflow-x-hidden">
-      <div className="fixed top-4 right-6 z-50">
+    <div className="fixed inset-0 w-full bg-[#0a0f1d] text-slate-50 font-sans flex flex-col overflow-hidden">
+      <div className="fixed top-4 right-6 z-50 pt-[env(safe-area-inset-top)]">
         <button onClick={togglePrivateMode} className={`px-4 py-2 rounded-full text-[10px] font-black tracking-[0.15em] border backdrop-blur-xl ${isPrivateMode ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' : 'bg-slate-800/40 text-slate-400 border-white/10'}`}>
           {isPrivateMode ? 'ADMIN_SECURE' : 'GUEST_ACCESS'}
         </button>
       </div>
-      <main className="flex-1 overflow-y-auto p-4 lg:p-10 w-full">
+      <main className="flex-1 overflow-y-auto p-4 lg:p-10 w-full pb-[env(safe-area-inset-bottom)]">
         <div className="w-full max-w-[1600px] mx-auto h-full flex flex-col pt-6">
           <Breadcrumbs />
           <div className="flex-1 w-full">{children}</div>
@@ -139,7 +139,7 @@ const WidgetCard = ({ children, onClick }) => (
   <div 
     onClick={onClick} 
     style={{ background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' }} 
-    className="backdrop-blur-2xl border border-white/10 rounded-[2rem] lg:rounded-[3rem] p-5 lg:p-14 hover:border-indigo-400/40 transition-all cursor-pointer group flex flex-col h-full min-h-[240px] lg:min-h-[420px] w-full"
+    className="backdrop-blur-2xl border border-white/10 rounded-[2rem] lg:rounded-[3rem] p-5 lg:p-14 hover:border-indigo-400/40 transition-all cursor-pointer group flex flex-col h-full min-h-[240px] lg:min-h-[420px] w-full touch-manipulation"
   >
     <div className="flex-1 flex flex-col justify-center w-full">{children}</div>
   </div>
