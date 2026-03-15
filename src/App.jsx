@@ -19,37 +19,57 @@ const AppProvider = ({ children }) => {
 
   const WORKER_URL = 'https://sparkling-credit-38ce.borimundi.workers.dev';
 
-  // --- 데이터 호출 함수 (암호 헤더 추가) ---
+  // --- 데이터 호출 함수 (보안 및 피드백 강화) ---
   const fetchDashboardData = async (password = adminPassword) => {
     try {
       const headers = { "Content-Type": "application/json" };
       if (password) headers["X-Admin-Password"] = password;
 
       const response = await fetch(WORKER_URL, { headers });
-      if (!response.ok) throw new Error('데이터 호출 실패');
-      const json = await response.json();
       
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          throw new Error('암호가 올바르지 않습니다.');
+        }
+        throw new Error('서버 통신에 실패했습니다.');
+      }
+
+      const json = await response.json();
       setRealTimeData(json);
 
-      // 데이터가 배열(상세정보)로 오면 어드민 모드 확정
-      if (password && Array.isArray(json.todo)) {
-        setIsPrivateMode(true);
-        setAdminPassword(password);
-      } else if (!password) {
+      // 데이터 구조를 통한 인증 최종 확인
+      if (password) {
+        if (Array.isArray(json.todo)) {
+          setIsPrivateMode(true);
+          setAdminPassword(password);
+        } else {
+          // 암호를 넣었음에도 객체(count)가 왔다면 인증 실패로 간주
+          setIsPrivateMode(false);
+          setAdminPassword("");
+          alert("인증에 실패했습니다. 암호를 다시 확인해 주세요.");
+        }
+      } else {
         setIsPrivateMode(false);
         setAdminPassword("");
       }
     } catch (error) {
-      console.error("실시간 데이터 로드 오류:", error);
+      console.error("Data Fetch Error:", error);
+      // 에러 발생 시 상태 초기화
+      setIsPrivateMode(false);
+      setAdminPassword("");
+      if (password) alert(error.message);
     }
   };
 
   const togglePrivateMode = () => {
     if (!isPrivateMode) {
       const input = prompt("ADMIN_SECURE 암호를 입력하세요:");
-      if (input) fetchDashboardData(input);
+      if (input) {
+        fetchDashboardData(input);
+      }
     } else {
-      fetchDashboardData(""); // 암호 없이 재요청하여 초기화
+      // 로그아웃 시 빈 값으로 요청하여 게스트 모드 전환
+      fetchDashboardData("");
     }
   };
 
@@ -160,7 +180,6 @@ const Dashboard = () => {
 const AppContent = () => {
   const { currentPage, realTimeData } = useContext(AppContext);
 
-  // --- 상세 페이지 보안 처리 ---
   if (currentPage.id === 'region-a') {
     const isAdminAuthenticated = Array.isArray(realTimeData?.todo);
 
