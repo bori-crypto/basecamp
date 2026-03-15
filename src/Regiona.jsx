@@ -5,11 +5,7 @@ import {
   CloudRain, ArrowUpRight, ArrowDownRight
 } from 'lucide-react';
 
-const CURRENCY_DATA = {
-  rate: "1,342.50",
-  change: "2.10",
-};
-
+const CURRENCY_DATA = { rate: "1,342.50", change: "2.10" };
 const FORECAST_MOCK = [
   { day: 'Mon', temp: 14, icon: <Sun size={12} /> },
   { day: 'Tue', temp: 11, icon: <Cloud size={12} /> },
@@ -21,10 +17,13 @@ export default function Regiona({ data }) {
 
   const weather = data?.weather || { temp: "--", wind: "--", windDir: "--" };
   const stock = data?.stock || { index: "----.--", change: "--", percent: "--" };
-  
   const todos = data?.todo;
   const remainingTodos = Array.isArray(todos) ? todos.length : (todos?.count || 0);
   const todoList = Array.isArray(todos) ? todos : [];
+
+  // [수정] 날짜 포맷팅 함수 (연도 포함 여부 결정)
+  const getFullDate = () => new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'numeric', day: 'numeric', weekday: 'short' });
+  const getShortDate = () => new Date().toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric', weekday: 'short' });
 
   return (
     <div className="w-full h-full grid grid-cols-2 grid-rows-2 gap-2 font-sans text-slate-200 overflow-hidden">
@@ -43,9 +42,7 @@ export default function Regiona({ data }) {
                 <span className="text-lg sm:text-2xl md:text-3xl landscape:text-base lg:landscape:text-3xl font-black text-white truncate">{weather.wind}</span>
                 <span className="text-[7px] md:text-[9px] font-medium text-slate-500 uppercase">m/s</span>
               </div>
-              <span className="text-[9px] md:text-xs landscape:text-[8px] lg:landscape:text-xs font-bold text-blue-300/80 uppercase truncate w-full">
-                {weather.windDir}
-              </span>
+              <span className="text-[9px] md:text-xs landscape:text-[8px] lg:landscape:text-xs font-bold text-blue-300/80 uppercase truncate w-full">{weather.windDir}</span>
             </div>
           </div>
         </div>
@@ -60,19 +57,20 @@ export default function Regiona({ data }) {
         </div>
       </section>
 
-      {/* 위젯 2: 할 일 */}
+      {/* 위젯 2: 할 일 (반응형 날짜 적용) */}
       <section 
-        role="button"
-        onClick={() => setIsListOpen(!isListOpen)}
+        role="button" onClick={() => setIsListOpen(!isListOpen)}
         className="rounded-3xl bg-slate-800/40 border border-white/10 p-3 md:p-5 landscape:p-2 lg:landscape:p-5 cursor-pointer hover:bg-slate-700/40 active:scale-[0.98] transition-all duration-300 shadow-xl overflow-hidden relative backdrop-blur-md flex flex-col"
       >
         {!isListOpen ? (
           <div className="h-full flex flex-col justify-center gap-3 landscape:gap-1.5 lg:landscape:gap-3">
             <div className="flex items-center gap-2 overflow-hidden">
               <Calendar className="text-blue-400 shrink-0 w-5 h-5 md:w-7 md:h-7 landscape:w-4 landscape:h-4 lg:landscape:w-7 lg:landscape:h-7" />
-              <span className="text-base sm:text-xl md:text-2xl lg:text-3xl landscape:text-sm lg:landscape:text-3xl font-black tracking-tighter text-white whitespace-nowrap leading-none truncate">
-                {new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'numeric', day: 'numeric', weekday: 'short' })}
-              </span>
+              <div className="text-base sm:text-xl md:text-2xl lg:text-3xl landscape:text-sm lg:landscape:text-3xl font-black tracking-tighter text-white whitespace-nowrap leading-none truncate">
+                {/* [수정] 화면 너비에 따라 날짜 표시 방식 전환 (sm 미만 세로에서는 짧게) */}
+                <span className="sm:inline hidden">{getFullDate()}</span>
+                <span className="sm:hidden inline">{getShortDate()}</span>
+              </div>
             </div>
             <div className="flex items-center gap-2 text-blue-300 bg-blue-500/10 w-fit px-2.5 py-1 md:px-4 md:py-2 landscape:px-2 landscape:py-0.5 lg:landscape:px-4 lg:landscape:py-2 rounded-lg md:rounded-xl border border-blue-500/20">
               <CheckCircle2 size={14} className="md:w-5 md:h-5 landscape:w-3 landscape:h-3 lg:landscape:w-5 lg:landscape:h-5" />
@@ -116,14 +114,7 @@ export default function Regiona({ data }) {
         </div>
         <div className="h-10 md:h-14 landscape:h-6 lg:landscape:h-14 w-full mt-2 landscape:mt-1 lg:landscape:mt-2">
           <svg viewBox="0 0 100 40" preserveAspectRatio="none" className="w-full h-full overflow-visible">
-            <path
-              d="M 0,30 L 10,25 L 20,35 L 30,20 L 40,25 L 50,15 L 60,20 L 70,10 L 80,15 L 90,5 L 100,10"
-              fill="none"
-              stroke="#10b981"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+            <path d="M 0,30 L 10,25 L 20,35 L 30,20 L 40,25 L 50,15 L 60,20 L 70,10 L 80,15 L 90,5 L 100,10" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </div>
       </section>
