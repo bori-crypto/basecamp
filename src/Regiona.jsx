@@ -6,13 +6,6 @@ import {
 } from 'lucide-react';
 
 // --- API 연동 전인 데이터는 유지 ---
-const TODO_DATA = [
-  { id: 1, text: '주간 보고서 작성', done: false, date: '03.15' },
-  { id: 2, text: '신규 프로젝트 미팅', done: true, date: '03.16' },
-  { id: 3, text: '건강검진 예약', done: false, date: '03.17' },
-  { id: 4, text: '러닝 5km', done: false, date: '03.18' },
-];
-
 const CURRENCY_DATA = {
   rate: "1,342.50",
   change: "2.10",
@@ -26,11 +19,14 @@ const FORECAST_MOCK = [
 
 export default function Regiona({ data }) {
   const [isListOpen, setIsListOpen] = useState(false);
-  const remainingTodos = TODO_DATA.filter(t => !t.done).length;
 
   // --- 실시간 데이터 연결 (데이터가 없으면 기본값 표시) ---
   const weather = data?.weather || { temp: "--", wind: "--", windDir: "--" };
   const stock = data?.stock || { index: "----.--", change: "--", percent: "--" };
+  
+  // [수정] 구글 캘린더 일정 데이터 연결
+  const todos = data?.todo || []; 
+  const remainingTodos = todos.length;
 
   return (
     <div className="w-full h-full grid grid-cols-2 grid-rows-2 gap-2 font-sans text-slate-200 overflow-hidden">
@@ -66,7 +62,7 @@ export default function Regiona({ data }) {
         </div>
       </section>
 
-      {/* 위젯 2: 할 일 */}
+      {/* 위젯 2: 할 일 (구글 캘린더 실시간 연동) */}
       <section 
         role="button"
         onClick={() => setIsListOpen(!isListOpen)}
@@ -77,27 +73,30 @@ export default function Regiona({ data }) {
             <div className="flex items-center gap-2 overflow-hidden">
               <Calendar className="text-blue-400 shrink-0 w-5 h-5 md:w-7 md:h-7" />
               <span className="text-base sm:text-xl md:text-2xl lg:text-3xl font-black tracking-tighter text-white whitespace-nowrap leading-none truncate">
-                2026.3.15. (일)
+                {/* 현재 날짜 표시 */}
+                {new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'numeric', day: 'numeric', weekday: 'short' })}
               </span>
             </div>
             <div className="flex items-center gap-2 text-blue-300 bg-blue-500/10 w-fit px-2.5 py-1 md:px-4 md:py-2 rounded-lg md:rounded-xl border border-blue-500/20">
               <CheckCircle2 size={14} className="md:w-5 md:h-5" />
-              <span className="text-[10px] md:text-base font-bold whitespace-nowrap">{remainingTodos}개 남음</span>
+              <span className="text-[10px] md:text-base font-bold whitespace-nowrap">{remainingTodos}개 일정</span>
             </div>
           </div>
         ) : (
           <div className="h-full flex flex-col animate-in">
             <div className="flex items-center gap-1 mb-2 text-blue-400">
               <ChevronLeft size={14} />
-              <span className="text-[9px] md:text-xs font-black uppercase tracking-widest leading-none">To-do</span>
+              <span className="text-[9px] md:text-xs font-black uppercase tracking-widest leading-none">Calendar</span>
             </div>
             <div className="space-y-1 overflow-y-auto pr-1 custom-scrollbar">
-              {TODO_DATA.map(t => (
-                <div key={t.id} className="flex items-center justify-between bg-white/5 p-1.5 md:p-2 rounded-lg border border-white/5">
-                  <span className={`text-[9px] md:text-xs truncate mr-1 ${t.done ? 'line-through text-slate-500' : 'text-slate-200 font-bold'}`}>{t.text}</span>
+              {todos.length > 0 ? todos.map((t, idx) => (
+                <div key={t.id || idx} className="flex items-center justify-between bg-white/5 p-1.5 md:p-2 rounded-lg border border-white/5">
+                  <span className="text-[9px] md:text-xs truncate mr-1 text-slate-200 font-bold">{t.text}</span>
                   <span className="text-[7px] md:text-[9px] text-slate-500 font-mono shrink-0">{t.date}</span>
                 </div>
-              ))}
+              )) : (
+                <div className="text-[9px] md:text-xs text-slate-500 text-center py-4">일정이 없습니다</div>
+              )}
             </div>
           </div>
         )}
@@ -118,12 +117,6 @@ export default function Regiona({ data }) {
         </div>
         <div className="h-10 md:h-14 w-full mt-2">
           <svg viewBox="0 0 100 40" preserveAspectRatio="none" className="w-full h-full overflow-visible">
-            <defs>
-              <linearGradient id="stockGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#10b981" stopOpacity="0.4" />
-                <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
-              </linearGradient>
-            </defs>
             <path
               d="M 0,30 L 10,25 L 20,35 L 30,20 L 40,25 L 50,15 L 60,20 L 70,10 L 80,15 L 90,5 L 100,10"
               fill="none"
