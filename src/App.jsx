@@ -70,7 +70,11 @@ const Layout = ({ children }) => {
 };
 
 const WidgetCard = ({ children, onClick }) => (
-  <div onClick={onClick} style={{ background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' }} className="backdrop-blur-2xl border border-white/10 rounded-[3rem] p-10 lg:p-14 hover:border-indigo-400/40 transition-all cursor-pointer group flex flex-col h-full min-h-[360px]">
+  <div 
+    onClick={onClick} 
+    style={{ background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' }} 
+    className="backdrop-blur-2xl border border-white/10 rounded-[2rem] lg:rounded-[3rem] p-5 lg:p-14 hover:border-indigo-400/40 transition-all cursor-pointer group flex flex-col h-full min-h-[280px] lg:min-h-[420px]"
+  >
     <div className="flex-1 flex flex-col justify-center">{children}</div>
   </div>
 );
@@ -78,7 +82,7 @@ const WidgetCard = ({ children, onClick }) => (
 const Dashboard = () => {
   const { pushPage } = useContext(AppContext);
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 py-2">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-12 py-2">
       {/* [여기가 좌상단 2*2 장소] - 불러온 Regiona를 꽂음 */}
       <WidgetCard onClick={() => pushPage('region-a', 'Region Alpha', Layers)}>
         <Regiona />
@@ -108,16 +112,6 @@ const Dashboard = () => {
   );
 };
 
-export default function App() {
-  const [currentPage, setCurrentPage] = useState({ id: 'home' }); // 실제 앱에선 Context 사용
-
-  return (
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
-  );
-}
-
 const AppContent = () => {
   const { currentPage } = useContext(AppContext);
   return (
@@ -126,3 +120,11 @@ const AppContent = () => {
     </Layout>
   );
 };
+
+export default function App() {
+  return (
+    <AppProvider>
+      <AppContent />
+    </AppProvider>
+  );
+}
