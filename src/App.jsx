@@ -6,7 +6,6 @@ import {
   ChevronLeft, Home, Layers, Lock
 } from 'lucide-react';
 
-// [중요] 깃허브에 저장된 Regiona.jsx 파일을 불러오는 코드
 import Regiona from './Regiona';
 
 const AppContext = createContext();
@@ -147,21 +146,18 @@ const Dashboard = () => {
       <WidgetCard onClick={() => pushPage('region-a', 'Schedules', Layers)}>
         <Regiona data={realTimeData} />
       </WidgetCard>
-
       <WidgetCard onClick={() => pushPage('analytics', 'Analytics', BarChart2)}>
         <div className="flex flex-col items-center text-slate-500">
            <BarChart2 size={40} className="mb-4 opacity-20" />
            <span className="text-[10px] font-black tracking-[0.2em] uppercase">Analytics Node</span>
         </div>
       </WidgetCard>
-
       <WidgetCard onClick={() => pushPage('storage', 'Database', Database)}>
         <div className="flex flex-col items-center text-slate-500">
            <Database size={40} className="mb-4 opacity-20" />
            <span className="text-[10px] font-black tracking-[0.2em] uppercase">Storage Cluster</span>
         </div>
       </WidgetCard>
-
       <WidgetCard onClick={() => pushPage('network', 'Network', Server)}>
         <div className="flex flex-col items-center text-slate-500">
            <Server size={40} className="mb-4 opacity-20" />
@@ -175,6 +171,7 @@ const Dashboard = () => {
 const AppContent = () => {
   const { currentPage, realTimeData } = useContext(AppContext);
 
+  // [수정] 오직 region-a(Schedules) 페이지만 관리자 인증을 확인하도록 로직 변경
   if (currentPage.id === 'region-a') {
     const isAdminAuthenticated = Array.isArray(realTimeData?.todo);
 
@@ -189,10 +186,10 @@ const AppContent = () => {
         </div>
       );
     }
-    return <div className="text-white p-10 font-black text-4xl">{currentPage.title} Page Ready</div>;
   }
 
-  return currentPage.id === 'home' ? <Dashboard /> : <div className="text-center py-20 text-3xl font-black">{currentPage.title}</div>;
+  // 홈이면 대시보드, 그 외(analytics 등)는 해당 페이지 타이틀 표시 (게스트 허용)
+  return currentPage.id === 'home' ? <Dashboard /> : <div className="text-center py-20 text-3xl font-black">{currentPage.title} Page Ready</div>;
 };
 
 export default function App() {
