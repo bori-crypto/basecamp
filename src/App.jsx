@@ -19,7 +19,6 @@ const AppProvider = ({ children }) => {
 
   const WORKER_URL = 'https://sparkling-credit-38ce.borimundi.workers.dev';
 
-  // --- 데이터 호출 함수 (보안 및 피드백 강화) ---
   const fetchDashboardData = async (password = adminPassword) => {
     try {
       const headers = { "Content-Type": "application/json" };
@@ -37,13 +36,11 @@ const AppProvider = ({ children }) => {
       const json = await response.json();
       setRealTimeData(json);
 
-      // 데이터 구조를 통한 인증 최종 확인
       if (password) {
         if (Array.isArray(json.todo)) {
           setIsPrivateMode(true);
           setAdminPassword(password);
         } else {
-          // 암호를 넣었음에도 객체(count)가 왔다면 인증 실패로 간주
           setIsPrivateMode(false);
           setAdminPassword("");
           alert("인증에 실패했습니다. 암호를 다시 확인해 주세요.");
@@ -54,7 +51,6 @@ const AppProvider = ({ children }) => {
       }
     } catch (error) {
       console.error("Data Fetch Error:", error);
-      // 에러 발생 시 상태 초기화
       setIsPrivateMode(false);
       setAdminPassword("");
       if (password) alert(error.message);
@@ -68,7 +64,6 @@ const AppProvider = ({ children }) => {
         fetchDashboardData(input);
       }
     } else {
-      // 로그아웃 시 빈 값으로 요청하여 게스트 모드 전환
       fetchDashboardData("");
     }
   };
@@ -139,7 +134,7 @@ const WidgetCard = ({ children, onClick }) => (
   <div 
     onClick={onClick} 
     style={{ background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' }} 
-    className="backdrop-blur-2xl border border-white/10 rounded-[2rem] lg:rounded-[3rem] p-5 lg:p-14 landscape:p-4 hover:border-indigo-400/40 transition-all cursor-pointer group flex flex-col h-full min-h-[240px] lg:min-h-[420px] landscape:min-h-[160px] w-full touch-manipulation"
+    className="backdrop-blur-2xl border border-white/10 rounded-[2rem] lg:rounded-[3rem] p-5 lg:p-14 landscape:p-4 md:landscape:p-5 lg:landscape:p-14 hover:border-indigo-400/40 transition-all cursor-pointer group flex flex-col h-full min-h-[240px] lg:min-h-[420px] landscape:min-h-[160px] md:landscape:min-h-[240px] lg:landscape:min-h-[420px] w-full touch-manipulation"
   >
     <div className="flex-1 flex flex-col justify-center w-full">{children}</div>
   </div>
