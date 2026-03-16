@@ -4,7 +4,6 @@ import {
   TrendingUp, DollarSign, ChevronLeft, Cloud, 
   CloudRain, ArrowUpRight, ArrowDownRight
 } from 'lucide-react';
-// 부모의 Context를 가져와서 클릭 기능을 쓰기 위해 import
 import { AppContext } from './App';
 
 const CURRENCY_DATA = { rate: "1,342.50", change: "2.10" };
@@ -28,9 +27,10 @@ export default function Regiona({ data }) {
   const getShortDate = () => new Date().toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric', weekday: 'short' });
 
   return (
-    <div className="w-full h-full p-5 lg:p-14 landscape:p-4 lg:landscape:p-14 grid grid-cols-2 grid-rows-2 gap-2 font-sans text-slate-200 overflow-hidden">
+    /* [수정] lg:p-6으로 줄여 이중 여백 제거, gap-4로 확장하여 시원한 배치 */
+    <div className="w-full h-full p-5 lg:p-6 landscape:p-4 lg:landscape:p-6 grid grid-cols-2 grid-rows-2 gap-4 font-sans text-slate-200 overflow-hidden">
       
-      {/* 1. 날씨 섹션 (GUEST 허용) */}
+      {/* 1. 날씨 섹션 */}
       <section 
         onClick={() => pushPage('weather-detail', 'Weather Info', Sun)}
         className="rounded-3xl bg-slate-800/40 border border-white/10 p-3 md:p-5 landscape:p-2 lg:landscape:p-5 flex flex-col justify-between shadow-xl backdrop-blur-md overflow-hidden cursor-pointer hover:bg-white/5 transition-colors"
@@ -38,13 +38,13 @@ export default function Regiona({ data }) {
         <div className="flex justify-between items-center gap-1">
           <div className="flex items-center gap-1 md:gap-2">
             <Sun className="text-yellow-400 w-5 h-5 md:w-8 md:h-8 shrink-0" />
-            <span className="text-lg sm:text-2xl md:text-3xl landscape:text-base lg:landscape:text-3xl font-black text-white leading-none">{weather.temp}°</span>
+            <span className="text-lg sm:text-2xl md:text-3xl landscape:text-base lg:landscape:text-2xl font-black text-white leading-none">{weather.temp}°</span>
           </div>
           <div className="flex items-center gap-1 md:gap-2 text-blue-300 min-w-0">
-            <Wind className="w-5 h-5 md:w-8 md:h-8 landscape:w-4 landscape:h-4 lg:landscape:w-8 lg:landscape:h-8 shrink-0" />
+            <Wind className="w-5 h-5 md:w-8 md:h-8 landscape:w-4 landscape:h-4 lg:landscape:w-6 lg:landscape:h-6 shrink-0" />
             <div className="flex flex-col items-start leading-none min-w-0">
               <div className="flex items-baseline gap-0.5">
-                <span className="text-lg sm:text-2xl md:text-3xl landscape:text-base lg:landscape:text-3xl font-black text-white truncate">{weather.wind}</span>
+                <span className="text-lg sm:text-2xl md:text-3xl landscape:text-base lg:landscape:text-2xl font-black text-white truncate">{weather.wind}</span>
                 <span className="text-[7px] md:text-[9px] font-medium text-slate-500 uppercase">m/s</span>
               </div>
               <span className="text-[9px] md:text-xs landscape:text-[8px] lg:landscape:text-xs font-bold text-blue-300/80 uppercase truncate w-full">{weather.windDir}</span>
@@ -62,7 +62,7 @@ export default function Regiona({ data }) {
         </div>
       </section>
 
-      {/* 2. 일정 섹션 (ADMIN 전용 잠금 타겟) */}
+      {/* 2. 일정 섹션 (날짜 글자 크기 lg:text-2xl 최적화) */}
       <section 
         onClick={() => pushPage('schedules-detail', 'Schedules', Calendar)}
         className="rounded-3xl bg-slate-800/40 border border-white/10 p-3 md:p-5 landscape:p-2 lg:landscape:p-5 cursor-pointer hover:bg-slate-700/40 active:scale-[0.98] transition-all duration-300 shadow-xl overflow-hidden relative backdrop-blur-md flex flex-col"
@@ -70,7 +70,7 @@ export default function Regiona({ data }) {
         <div className="h-full flex flex-col justify-center gap-3 landscape:gap-1.5 lg:landscape:gap-3">
           <div className="flex items-center gap-2 overflow-hidden">
             <Calendar className="text-blue-400 shrink-0 w-5 h-5 md:w-7 md:h-7 landscape:w-4 landscape:h-4 lg:landscape:w-7 lg:landscape:h-7" />
-            <div className="text-base sm:text-xl md:text-2xl lg:text-3xl landscape:text-sm lg:landscape:text-3xl font-black tracking-tighter text-white whitespace-nowrap leading-none truncate">
+            <div className="text-base sm:text-xl md:text-2xl lg:text-2xl landscape:text-sm lg:landscape:text-2xl font-black tracking-tighter text-white whitespace-nowrap leading-none truncate">
               <span className="sm:inline hidden">{getFullDate()}</span>
               <span className="sm:hidden inline">{getShortDate()}</span>
             </div>
@@ -82,7 +82,7 @@ export default function Regiona({ data }) {
         </div>
       </section>
 
-      {/* 3. 주식 섹션 (GUEST 허용) */}
+      {/* 3. 주식 섹션 */}
       <section 
         onClick={() => pushPage('stock-detail', 'Market Index', TrendingUp)}
         className="rounded-3xl bg-slate-800/40 border border-white/10 p-3 md:p-5 landscape:p-2 lg:landscape:p-5 flex flex-col justify-between shadow-xl backdrop-blur-md overflow-hidden cursor-pointer hover:bg-white/5 transition-colors"
@@ -90,7 +90,7 @@ export default function Regiona({ data }) {
         <div className="flex justify-between items-start">
           <div className="min-w-0">
             <p className="text-slate-400 text-[7px] md:text-xs landscape:text-[7px] lg:landscape:text-xs font-bold mb-0.5 uppercase tracking-tighter">KOSPI Index</p>
-            <h3 className="text-lg md:text-2xl lg:text-3xl landscape:text-base lg:landscape:text-3xl font-black text-white truncate leading-none">{stock.index}</h3>
+            <h3 className="text-lg md:text-2xl lg:text-2xl font-black text-white truncate leading-none">{stock.index}</h3>
             <div className="flex items-center gap-0.5 text-emerald-400 text-[9px] md:text-sm landscape:text-[8px] lg:landscape:text-sm mt-1 font-bold">
               <ArrowUpRight size={10} className="md:w-4 md:h-4 landscape:w-3 landscape:h-3 lg:landscape:w-4 lg:landscape:h-4" />
               <span className="truncate">{stock.change} ({stock.percent}%)</span>
@@ -105,7 +105,7 @@ export default function Regiona({ data }) {
         </div>
       </section>
 
-      {/* 4. 환율 섹션 (GUEST 허용) */}
+      {/* 4. 환율 섹션 */}
       <section 
         onClick={() => pushPage('currency-detail', 'Currency Exchange', DollarSign)}
         className="rounded-3xl bg-slate-800/40 border border-white/10 p-3 md:p-5 landscape:p-2 lg:landscape:p-5 flex flex-col justify-between shadow-xl backdrop-blur-md overflow-hidden cursor-pointer hover:bg-white/5 transition-colors"
@@ -115,7 +115,7 @@ export default function Regiona({ data }) {
             <p className="text-slate-400 text-[7px] md:text-xs landscape:text-[7px] lg:landscape:text-xs font-bold mb-0.5 uppercase tracking-tighter">USD / KRW</p>
             <div className="flex items-baseline gap-0.5 text-white">
               <span className="text-[10px] md:text-lg landscape:text-[9px] lg:landscape:text-lg text-slate-500 font-bold">₩</span>
-              <h3 className="text-lg md:text-2xl lg:text-3xl landscape:text-base lg:landscape:text-3xl font-black tracking-tight truncate leading-none">{CURRENCY_DATA.rate}</h3>
+              <h3 className="text-lg md:text-2xl lg:text-2xl font-black tracking-tight truncate leading-none">{CURRENCY_DATA.rate}</h3>
             </div>
           </div>
           <div className="bg-blue-500/20 p-1 md:p-2 landscape:p-1 lg:landscape:p-2 rounded-xl">
