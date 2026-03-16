@@ -194,4 +194,19 @@ const AppContent = () => {
   }
 
   return currentPage.id === 'home' ? <Dashboard /> : (
-    <div
+    <div className="text-center py-20 animate-in fade-in">
+      <h1 className="text-4xl font-black uppercase tracking-tighter mb-4">{currentPage.title}</h1>
+      <p className="text-slate-500">상세 데이터 및 기능이 준비 중입니다.</p>
+    </div>
+  );
+};
+
+export default function App() {
+  return (
+    <AppProvider>
+      <Layout>
+        <AppContent />
+      </Layout>
+    </AppProvider>
+  );
+}
