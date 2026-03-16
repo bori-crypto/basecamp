@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 
 import Regiona from './Regiona';
-import RegionB from './RegionB'; // [추가] RegionB 컴포넌트 임포트
+import RegionB from './RegionB'; 
 
 // Context 생성
 export const AppContext = createContext();
@@ -150,7 +150,7 @@ const Dashboard = () => {
         <Regiona data={realTimeData} />
       </WidgetCard>
       
-      {/* RegionB: Roadmap (우상단) [수정] */}
+      {/* RegionB: Roadmap (우상단) - [수정] 부모 섹션의 group 클래스 제거 완료 */}
       <WidgetCard noPadding={true}>
         <RegionB data={realTimeData} isAdmin={isPrivateMode} />
       </WidgetCard>
