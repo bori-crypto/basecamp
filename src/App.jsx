@@ -131,12 +131,12 @@ const Layout = ({ children }) => {
   );
 };
 
-// [수정] WidgetCard: RegionB가 자체 호버를 가지므로, 부모의 hover 효과 제거
+// [수정] WidgetCard: 맥북 크롬 글자 잘림 방지를 위해 lg:p-14에서 lg:p-8로 여백 다이어트
 const WidgetCard = ({ children, onClick, noPadding = false }) => (
   <div 
     onClick={onClick} 
     style={{ background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' }} 
-    className={`backdrop-blur-2xl border border-white/10 rounded-[2rem] lg:rounded-[3rem] ${noPadding ? '' : 'p-5 lg:p-14 landscape:p-4 lg:landscape:p-14'} transition-all cursor-pointer flex flex-col h-full min-h-[240px] lg:min-h-[420px] landscape:min-h-[160px] lg:landscape:min-h-[420px] w-full touch-manipulation`}
+    className={`backdrop-blur-2xl border border-white/10 rounded-[2rem] lg:rounded-[3rem] ${noPadding ? '' : 'p-5 lg:p-8 landscape:p-4 lg:landscape:p-8'} transition-all cursor-pointer flex flex-col h-full min-h-[240px] lg:min-h-[420px] landscape:min-h-[160px] lg:landscape:min-h-[420px] w-full touch-manipulation`}
   >
     <div className="flex-1 flex flex-col justify-center w-full">{children}</div>
   </div>
@@ -194,19 +194,4 @@ const AppContent = () => {
   }
 
   return currentPage.id === 'home' ? <Dashboard /> : (
-    <div className="text-center py-20 animate-in fade-in">
-      <h1 className="text-4xl font-black uppercase tracking-tighter mb-4">{currentPage.title}</h1>
-      <p className="text-slate-500">상세 데이터 및 기능이 준비 중입니다.</p>
-    </div>
-  );
-};
-
-export default function App() {
-  return (
-    <AppProvider>
-      <Layout>
-        <AppContent />
-      </Layout>
-    </AppProvider>
-  );
-}
+    <div
