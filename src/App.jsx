@@ -131,7 +131,7 @@ const Layout = ({ children }) => {
   );
 };
 
-// [수정] WidgetCard: 맥북 크롬 글자 잘림 방지를 위해 lg:p-14에서 lg:p-8로 여백 다이어트
+// [수정] WidgetCard: 맥북 크롬 글자 잘림 방지 및 여백 다이어트 (lg:p-8)
 const WidgetCard = ({ children, onClick, noPadding = false }) => (
   <div 
     onClick={onClick} 
@@ -146,17 +146,14 @@ const Dashboard = () => {
   const { pushPage, realTimeData, isPrivateMode } = useContext(AppContext);
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-12 py-2 w-full max-w-full">
-      {/* RegionA (좌상단) */}
       <WidgetCard noPadding={true}>
         <Regiona data={realTimeData} />
       </WidgetCard>
       
-      {/* RegionB: Roadmap (우상단) - noPadding 유지 */}
       <WidgetCard noPadding={true}>
         <RegionB data={realTimeData} isAdmin={isPrivateMode} />
       </WidgetCard>
       
-      {/* 하단 위젯들은 hover 효과 유지 */}
       <WidgetCard onClick={() => pushPage('storage', 'Database', Database)}>
         <div className="flex flex-col items-center text-slate-500 hover:text-indigo-400 transition-colors">
            <Database size={40} className="mb-4 opacity-20" />
