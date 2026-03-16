@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   Camera, 
-  Motorcycle, // 비행기 대신 모터사이클 아이콘 추가
+  Bike, // Motorcycle 대신 라이브러리 표준 명칭인 Bike로 수정
   Footprints, 
   Fuel, 
   Mountain, 
@@ -18,7 +18,7 @@ const RegionB = ({ isAdmin, data }) => {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [path, setPath] = useState([]);
 
-  // 7개 아이콘 데이터 (모터사이클 반영 및 명칭 엄격 준수)
+  // 7개 아이콘 데이터 (Bike 아이콘 반영 및 명칭 엄격 준수)
   const menuData = {
     photos: {
       label: '나의 기록',
@@ -32,7 +32,7 @@ const RegionB = ({ isAdmin, data }) => {
     },
     travel: {
       label: 'Bike Travel',
-      icon: <Motorcycle size={32} />, // 비행기(Plane)에서 모터사이클로 교체 완료
+      icon: <Bike size={32} />, // 에러 해결을 위해 Bike로 교체 완료
       color: 'from-indigo-500 to-purple-400',
       sub: [
         { label: '유라시아 2030', detail: ['루트 설계', '비자 확인', '체크리스트'] },
