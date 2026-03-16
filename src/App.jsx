@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 
 import Regiona from './Regiona';
+import RegionB from './RegionB'; // [추가] RegionB 컴포넌트 임포트
 
 // Context 생성
 export const AppContext = createContext();
@@ -141,19 +142,17 @@ const WidgetCard = ({ children, onClick, noPadding = false }) => (
 );
 
 const Dashboard = () => {
-  const { pushPage, realTimeData } = useContext(AppContext);
+  const { pushPage, realTimeData, isPrivateMode } = useContext(AppContext);
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-12 py-2 w-full max-w-full">
-      {/* [수정] 첫 번째 위젯: 통클릭(onClick) 제거하고 내부 클릭을 위해 noPadding 적용 */}
+      {/* RegionA (좌상단) */}
       <WidgetCard noPadding={true}>
         <Regiona data={realTimeData} />
       </WidgetCard>
       
-      <WidgetCard onClick={() => pushPage('analytics', 'Analytics', BarChart2)}>
-        <div className="flex flex-col items-center text-slate-500">
-           <BarChart2 size={40} className="mb-4 opacity-20" />
-           <span className="text-[10px] font-black tracking-[0.2em] uppercase">Analytics Node</span>
-        </div>
+      {/* RegionB: Roadmap (우상단) [수정] */}
+      <WidgetCard noPadding={true}>
+        <RegionB data={realTimeData} isAdmin={isPrivateMode} />
       </WidgetCard>
       
       <WidgetCard onClick={() => pushPage('storage', 'Database', Database)}>
@@ -176,7 +175,6 @@ const Dashboard = () => {
 const AppContent = () => {
   const { currentPage, realTimeData } = useContext(AppContext);
 
-  // [수정 핵심] 오직 'schedules-detail' ID로 접근할 때만 관리자 인증 확인
   if (currentPage.id === 'schedules-detail') {
     const isAdminAuthenticated = Array.isArray(realTimeData?.todo);
 
@@ -193,7 +191,6 @@ const AppContent = () => {
     }
   }
 
-  // 홈 화면이 아니면 모든 페이지를 게스트에게 오픈
   return currentPage.id === 'home' ? <Dashboard /> : (
     <div className="text-center py-20 animate-in fade-in">
       <h1 className="text-4xl font-black uppercase tracking-tighter mb-4">{currentPage.title}</h1>
