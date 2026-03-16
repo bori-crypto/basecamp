@@ -1,6 +1,6 @@
 import React, { useState, createContext, useContext, useMemo, useEffect } from 'react';
 import { 
-  Activity, Map as MapIcon, BarChart2, 
+  Camera, Map as MapIcon, BarChart2, 
   Shield, ShieldOff, ChevronRight, 
   Settings, Database, Server, Clock,
   ChevronLeft, Home, Layers, Lock, CloudSun, TrendingUp, DollarSign
@@ -131,11 +131,12 @@ const Layout = ({ children }) => {
   );
 };
 
+// [수정] WidgetCard: RegionB가 자체 호버를 가지므로, 부모의 hover 효과 제거
 const WidgetCard = ({ children, onClick, noPadding = false }) => (
   <div 
     onClick={onClick} 
     style={{ background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' }} 
-    className={`backdrop-blur-2xl border border-white/10 rounded-[2rem] lg:rounded-[3rem] ${noPadding ? '' : 'p-5 lg:p-14 landscape:p-4 lg:landscape:p-14'} hover:border-indigo-400/40 transition-all cursor-pointer group flex flex-col h-full min-h-[240px] lg:min-h-[420px] landscape:min-h-[160px] lg:landscape:min-h-[420px] w-full touch-manipulation`}
+    className={`backdrop-blur-2xl border border-white/10 rounded-[2rem] lg:rounded-[3rem] ${noPadding ? '' : 'p-5 lg:p-14 landscape:p-4 lg:landscape:p-14'} transition-all cursor-pointer flex flex-col h-full min-h-[240px] lg:min-h-[420px] landscape:min-h-[160px] lg:landscape:min-h-[420px] w-full touch-manipulation`}
   >
     <div className="flex-1 flex flex-col justify-center w-full">{children}</div>
   </div>
@@ -150,20 +151,21 @@ const Dashboard = () => {
         <Regiona data={realTimeData} />
       </WidgetCard>
       
-      {/* RegionB: Roadmap (우상단) - [수정] 부모 섹션의 group 클래스 제거 완료 */}
+      {/* RegionB: Roadmap (우상단) - noPadding 유지 */}
       <WidgetCard noPadding={true}>
         <RegionB data={realTimeData} isAdmin={isPrivateMode} />
       </WidgetCard>
       
+      {/* 하단 위젯들은 hover 효과 유지 */}
       <WidgetCard onClick={() => pushPage('storage', 'Database', Database)}>
-        <div className="flex flex-col items-center text-slate-500">
+        <div className="flex flex-col items-center text-slate-500 hover:text-indigo-400 transition-colors">
            <Database size={40} className="mb-4 opacity-20" />
            <span className="text-[10px] font-black tracking-[0.2em] uppercase">Storage Cluster</span>
         </div>
       </WidgetCard>
       
       <WidgetCard onClick={() => pushPage('network', 'Network', Server)}>
-        <div className="flex flex-col items-center text-slate-500">
+        <div className="flex flex-col items-center text-slate-500 hover:text-indigo-400 transition-colors">
            <Server size={40} className="mb-4 opacity-20" />
            <span className="text-[10px] font-black tracking-[0.2em] uppercase">Edge Server</span>
         </div>
