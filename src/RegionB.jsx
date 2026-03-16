@@ -142,7 +142,7 @@ const RegionB = ({ isAdmin, data }) => {
             ))}
           </div>
         </div>
-        <div className="flex items-center gap-3 text-slate-600">
+        <div className="flex items-center gap-3 text-slate-600 tracking-tight">
           <Settings2 size={16} className="cursor-pointer hover:text-indigo-400 transition-colors" />
           <LayoutGrid size={16} className="cursor-pointer hover:text-indigo-400 transition-colors" />
         </div>
@@ -151,19 +151,24 @@ const RegionB = ({ isAdmin, data }) => {
       {/* 메인 콘텐츠 구역 */}
       <div className="flex-1 relative z-10 overflow-y-auto scrollbar-hide">
         {step === 0 ? (
-          /* 1단계: 7개 아이콘 메인 */
+          /* [수정 완료] 1단계: 7개 아이콘 메인 - 호버 효과 그라데이션 박스에 집중 */
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 animate-in zoom-in-95 duration-300">
             {Object.keys(menuData).map((key) => (
               <div 
                 key={key} 
-                onClick={() => handleMainClick(key)}
-                className="group flex flex-col items-center justify-center p-3 cursor-pointer rounded-2xl hover:bg-white/5 transition-all"
+                className="group flex flex-col items-center justify-center p-3"
               >
-                <div className={`relative p-4 bg-gradient-to-br ${menuData[key].color} rounded-2xl text-white shadow-lg transition-all duration-500 group-hover:scale-110 group-hover:rotate-6 group-hover:shadow-[0_0_30px_-5px_rgba(255,255,255,0.3)]`}>
+                {/* [수정] Icon Wrapper: hover 효과를 여기에 집중시키고 주변 사각형 박스를 제거 */}
+                <div 
+                  onClick={() => handleMainClick(key)}
+                  className={`relative p-4 bg-gradient-to-br ${menuData[key].color} rounded-2xl text-white shadow-lg transition-all duration-500 cursor-pointer 
+                  hover:scale-110 hover:rotate-6 hover:shadow-[0_0_30px_-5px_rgba(255,255,255,0.3)]`}
+                >
                    {menuData[key].icon}
                 </div>
                 <div className="mt-3 text-center">
-                  <div className="text-xs font-bold text-slate-300 group-hover:text-white transition-colors whitespace-pre">
+                  {/* whitespace-pre 클래스로 레이블의 공백을 정확히 유지 */}
+                  <div className="text-xs font-bold text-slate-300 transition-colors whitespace-pre group-hover:text-white">
                     {menuData[key].label}
                   </div>
                 </div>
