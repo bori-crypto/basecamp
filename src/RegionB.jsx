@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   Camera, 
-  Plane, 
+  Motorcycle, // 비행기 대신 모터사이클 아이콘 추가
   Footprints, 
   Fuel, 
   Mountain, 
@@ -18,7 +18,7 @@ const RegionB = ({ isAdmin, data }) => {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [path, setPath] = useState([]);
 
-  // 7개 아이콘 맞춤 데이터 구조 (명칭 및 공백 엄격 준수)
+  // 7개 아이콘 데이터 (모터사이클 반영 및 명칭 엄격 준수)
   const menuData = {
     photos: {
       label: '나의 기록',
@@ -32,7 +32,7 @@ const RegionB = ({ isAdmin, data }) => {
     },
     travel: {
       label: 'Bike Travel',
-      icon: <Plane size={32} />,
+      icon: <Motorcycle size={32} />, // 비행기(Plane)에서 모터사이클로 교체 완료
       color: 'from-indigo-500 to-purple-400',
       sub: [
         { label: '유라시아 2030', detail: ['루트 설계', '비자 확인', '체크리스트'] },
@@ -96,7 +96,6 @@ const RegionB = ({ isAdmin, data }) => {
     setStep(2);
   };
 
-  // 상단 Breadcrumbs 클릭 시 즉시 점프 로직
   const jumpToStep = (targetStep) => {
     if (targetStep === 0) {
       setStep(0);
@@ -116,45 +115,46 @@ const RegionB = ({ isAdmin, data }) => {
   return (
     <div className="w-full h-full p-4 flex flex-col bg-transparent text-slate-200 relative overflow-hidden">
       
-      {/* [수정] 헤더 미니멀화 및 인터랙티브 네비게이션 */}
+      {/* 상단 네비게이션: 최상위(Step 0)일 때는 헤더를 비워 Noise 제거 */}
       <div className="flex items-center gap-3 mb-8 relative z-10 min-h-[40px]">
         {step > 0 && (
-          <button 
-            onClick={goBack} 
-            className="group flex items-center gap-2 bg-white/5 backdrop-blur-md px-3 py-1.5 rounded-xl hover:bg-white/10 transition-all text-xs font-medium border border-white/10"
-          >
-            <ChevronLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" /> 
-            뒤로가기
-          </button>
-        )}
-        
-        <div className="flex items-center gap-2 ml-2 text-[11px] font-medium text-slate-500">
-          {/* '유니버스' 클릭 시 메인으로 이동 */}
-          <button 
-            onClick={() => jumpToStep(0)}
-            className={`hover:text-indigo-400 transition-colors uppercase tracking-wider ${step === 0 ? "text-indigo-400 font-bold" : ""}`}
-          >
-            유니버스
-          </button>
-
-          {path.map((p, i) => (
-            <React.Fragment key={i}>
-              <ChevronRight size={12} className="opacity-40" />
+          <>
+            <button 
+              onClick={goBack} 
+              className="group flex items-center gap-2 bg-white/5 backdrop-blur-md px-3 py-1.5 rounded-xl hover:bg-white/10 transition-all text-xs font-medium border border-white/10"
+            >
+              <ChevronLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" /> 
+              뒤로가기
+            </button>
+            
+            <div className="flex items-center gap-2 ml-2 text-[11px] font-medium text-slate-500">
               <button 
-                onClick={() => i === 0 && jumpToStep(1)}
-                className={`transition-colors whitespace-pre ${i === path.length - 1 ? "text-slate-100 font-bold cursor-default" : "hover:text-slate-300 cursor-pointer"}`}
+                onClick={() => jumpToStep(0)}
+                className="hover:text-indigo-400 transition-colors uppercase tracking-wider"
               >
-                {p}
+                유니버스
               </button>
-            </React.Fragment>
-          ))}
-        </div>
+
+              {path.map((p, i) => (
+                <React.Fragment key={i}>
+                  <ChevronRight size={12} className="opacity-40" />
+                  <button 
+                    onClick={() => i === 0 && jumpToStep(1)}
+                    className={`transition-colors whitespace-pre ${i === path.length - 1 ? "text-slate-100 font-bold cursor-default" : "hover:text-slate-300 cursor-pointer"}`}
+                  >
+                    {p}
+                  </button>
+                </React.Fragment>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       {/* 메인 콘텐츠 구역 */}
       <div className="flex-1 relative z-10 overflow-y-auto scrollbar-hide">
         {step === 0 ? (
-          /* 1단계: 유니버스 메인 */
+          /* 1단계: 유니버스 메인 (아이콘 그리드) */
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 animate-in zoom-in-95 duration-300">
             {Object.keys(menuData).map((key) => (
               <div key={key} className="group flex flex-col items-center justify-center p-3">
