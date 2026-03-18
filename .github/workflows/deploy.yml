@@ -1,4 +1,4 @@
-name: Deploy to Cloudflare Pages
+name: Deploy Basecamp and Gatekeeper
 
 on:
   push:
@@ -24,14 +24,29 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Build project
-        run: npm run build  # React 프로젝트 빌드
+      - name: Build project (React)
+        run: npm run build
+        env:
+          # Vite가 인식할 수 있도록 VITE_ 접두사를 붙여서 암호를 주입해!
+          VITE_IMAGE_PASS: ${{ secrets.IMAGE_PASS }}
 
-      - name: Deploy to Cloudflare Pages
+      - name: Deploy to Cloudflare Pages (React App)
         uses: cloudflare/pages-action@v1
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: 'bori' # [중요] 오빠의 Cloudflare Pages 프로젝트 이름으로 변경해줘!
-          directory: 'dist' # Vite 기준 빌드 결과물 폴더 (CRA라면 'build'로 변경)
+          projectName: 'bori' # [유지] 오빠의 기존 Cloudflare Pages 프로젝트 이름
+          directory: 'dist' 
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Deploy Image Gatekeeper (Worker)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy
+          secrets: |
+            IMAGE_PASS
+        env:
+          # 워커 내부에서 env.IMAGE_PASS로 쓸 수 있도록 시크릿을 넘겨주는 과정이야
+          IMAGE_PASS: ${{ secrets.IMAGE_PASS }}
