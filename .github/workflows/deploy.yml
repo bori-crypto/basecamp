@@ -18,4 +18,5 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy
-          # 💡 secrets 부분만 쏙 뺐어! 이제 에러 안 날 거야.
+          # 💡 [핵심] 실패했던 'secrets' 부분만 쏙 뺐어! 
+          # 이제 권한 에러 없이 배포만 완벽하게 성공할 거야.
