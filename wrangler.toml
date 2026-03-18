@@ -1,0 +1,11 @@
+name = "basecamp-image-gatekeeper"
+main = "worker/basecamp-image-gatekeeper.js"
+compatibility_date = "2026-03-18"
+
+# 워커가 접근할 수 있도록 환경변수(Secrets) 자리를 마련해 두는 곳
+[vars]
+# 실제 암호 값은 GitHub Actions에서 주입될 예정이므로 여기서는 이름만 선언해 둬도 돼!
+
+[[r2_buckets]]
+binding = "MY_BUCKET"
+bucket_name = "basecamp-records"
