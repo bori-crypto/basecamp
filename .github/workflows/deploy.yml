@@ -18,5 +18,8 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy
-          # 💡 [핵심] 실패했던 'secrets' 부분만 쏙 뺐어! 
-          # 이제 권한 에러 없이 배포만 완벽하게 성공할 거야.
+        env:
+          # 💡 [핵심 수정] 이 부분이 빠져서 에러가 났던 거야! 
+          # 깃허브 비밀번호를 wrangler 전용 환경변수로 직접 연결해 줬어.
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
