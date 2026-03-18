@@ -212,4 +212,47 @@ const RegionB = ({ isAdmin, data }) => {
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-bold text-slate-200">{subItem.label}</span>
                   <div className={`p-1.5 rounded-lg bg-gradient-to-br ${menuData[selectedCategory].color} opacity-20 group-hover:opacity-100 transition-all text-white`}>
-                    {React.cloneElement(menuData[selectedCategory].icon,
+                    {React.cloneElement(menuData[selectedCategory].icon, { size: 16 })}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          /* 3단계: 상세 탐사 리스트 (이미지와 일반 텍스트 분기 처리) */
+          <div className="animate-in zoom-in-95 duration-300 h-full">
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 h-full">
+              <div className="flex items-center gap-3 mb-4 border-b border-white/5 pb-4">
+                <div className={`p-2 rounded-xl bg-gradient-to-br ${menuData[selectedCategory].color} text-white`}>
+                  {React.cloneElement(menuData[selectedCategory].icon, { size: 20 })}
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">{path[1]}</h3>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-widest">Detail Exploration</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                {menuData[selectedCategory].sub.find(s => s.label === path[1]).detail.map((item, idx) => (
+                  // .jpg로 끝나면 SecureImage 컴포넌트 렌더링, 아니면 기존 UI 렌더링
+                  item.endsWith('.jpg') ? (
+                    <SecureImage key={idx} src={item} alt={item} className="w-full h-32 object-cover rounded-xl border border-white/10" />
+                  ) : (
+                    <div key={idx} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5 hover:border-white/10 transition-all group cursor-pointer">
+                      <div className="flex items-center gap-3">
+                        <Sparkles size={12} className="text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <span className="text-xs text-slate-300 group-hover:text-white transition-colors">{item}</span>
+                      </div>
+                      <ChevronRight size={14} className="text-slate-600 group-hover:text-indigo-400 transition-colors" />
+                    </div>
+                  )
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default RegionB;
