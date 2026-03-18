@@ -1,0 +1,37 @@
+name: Deploy to Cloudflare Pages
+
+on:
+  push:
+    branches:
+      - main  # main 브랜치에 코드가 push될 때마다 실행
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # 최신 안정화 버전 사용
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build project
+        run: npm run build  # React 프로젝트 빌드
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: 'bori' # [중요] 오빠의 Cloudflare Pages 프로젝트 이름으로 변경해줘!
+          directory: 'dist' # Vite 기준 빌드 결과물 폴더 (CRA라면 'build'로 변경)
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
