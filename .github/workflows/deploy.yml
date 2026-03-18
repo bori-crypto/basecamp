@@ -3,7 +3,7 @@ name: Deploy Image Gatekeeper (Worker Only)
 on:
   push:
     branches:
-      - main  # main 브랜치에 push될 때마다 실행돼!
+      - main
 
 jobs:
   deploy-worker:
@@ -15,12 +15,7 @@ jobs:
       - name: Deploy Image Gatekeeper to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
-          # GitHub Secrets에 등록된 토큰과 ID를 사용해!
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy
-          # 워커가 R2에 접근할 때 사용할 암호를 주입하는 과정이야
-          secrets: |
-            IMAGE_PASS
-        env:
-          IMAGE_PASS: ${{ secrets.IMAGE_PASS }}
+          # 💡 secrets 부분만 쏙 뺐어! 이제 에러 안 날 거야.
