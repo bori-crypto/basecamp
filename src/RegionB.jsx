@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Camera,
-  Motorcycle,
+  Bike, // Motorcycle에서 Bike로 변경
   Footprints,
   Fuel,
   Mountain,
@@ -50,13 +50,13 @@ const RegionB = ({ isAdmin, data }) => {
       icon: <Camera size={24} />,
       color: 'from-blue-500 to-cyan-400',
       sub: [
-        { label: '최근 사진', detail: ['tour-1.jpg', 'tour-2.jpg', 'run-1.jpg'] }, // R2에 저장된 파일명 예시
+        { label: '최근 사진', detail: ['tour-1.jpg', 'tour-2.jpg', 'run-1.jpg'] },
         { label: '앨범별', detail: ['인물', '장소', '카테고리'] }
       ]
     },
     travel: {
       label: 'Bike Travel',
-      icon: <Motorcycle size={24} />,
+      icon: <Bike size={24} />, // Motorcycle에서 Bike로 변경
       color: 'from-indigo-500 to-purple-400',
       sub: [
         { label: '유라시아 2030', detail: ['루트 설계', '비자 확인'] },
