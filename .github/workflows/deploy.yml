@@ -8,18 +8,14 @@ on:
 jobs:
   deploy-worker:
     runs-on: ubuntu-latest
+    env:
+      # 💡 [치트키] 깃허브가 추천한 대로 Node.js 24를 강제로 활성화해서 경고를 없애줘!
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Deploy Image Gatekeeper to Cloudflare Workers
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy
-        env:
-          # 💡 [핵심 수정] 이 부분이 빠져서 에러가 났던 거야! 
-          # 깃허브 비밀번호를 wrangler 전용 환경변수로 직접 연결해 줬어.
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Deploy to Cloudflare
+        run: npx wrangler deploy
