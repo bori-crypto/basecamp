@@ -1,52 +1,26 @@
-name: Deploy Basecamp and Gatekeeper
+name: Deploy Image Gatekeeper (Worker Only)
 
 on:
   push:
     branches:
-      - main  # main 브랜치에 코드가 push될 때마다 실행
+      - main  # main 브랜치에 push될 때마다 실행돼!
 
 jobs:
-  deploy:
+  deploy-worker:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      deployments: write
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20' # 최신 안정화 버전 사용
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Build project (React)
-        run: npm run build
-        env:
-          # Vite가 인식할 수 있도록 VITE_ 접두사를 붙여서 암호를 주입해!
-          VITE_IMAGE_PASS: ${{ secrets.IMAGE_PASS }}
-
-      - name: Deploy to Cloudflare Pages (React App)
-        uses: cloudflare/pages-action@v1
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: 'bori' # [유지] 오빠의 기존 Cloudflare Pages 프로젝트 이름
-          directory: 'dist' 
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Deploy Image Gatekeeper (Worker)
+      - name: Deploy Image Gatekeeper to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
+          # GitHub Secrets에 등록된 토큰과 ID를 사용해!
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy
+          # 워커가 R2에 접근할 때 사용할 암호를 주입하는 과정이야
           secrets: |
             IMAGE_PASS
         env:
-          # 워커 내부에서 env.IMAGE_PASS로 쓸 수 있도록 시크릿을 넘겨주는 과정이야
           IMAGE_PASS: ${{ secrets.IMAGE_PASS }}
