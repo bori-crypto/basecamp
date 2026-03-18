@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Camera, 
-  Bike, // Motorcycle 대신 라이브러리 표준 명칭인 Bike로 수정
+  Bike, 
   Footprints, 
   Fuel, 
   Mountain, 
@@ -12,27 +12,54 @@ import {
   Sparkles
 } from 'lucide-react';
 
+// R2 사진을 안전하게 불러오기 위한 컴포넌트 (비밀번호 인증 내재화)
+const SecureImage = ({ src, alt, className }) => {
+  const [imgUrl, setImgUrl] = useState(null);
+  const imagePass = import.meta.env.VITE_IMAGE_PASS;
+  const workerUrl = "https://basecamp-image-gatekeeper.borimundi.workers.dev";
+
+  useEffect(() => {
+    const fetchImage = async () => {
+      try {
+        const response = await fetch(`${workerUrl}/${src}`, {
+          headers: { "X-Image-Pass": imagePass }
+        });
+        if (response.ok) {
+          const blob = await response.blob();
+          setImgUrl(URL.createObjectURL(blob));
+        }
+      } catch (err) {
+        console.error("Image load failed:", err);
+      }
+    };
+    fetchImage();
+    return () => imgUrl && URL.revokeObjectURL(imgUrl);
+  }, [src]);
+
+  return imgUrl ? <img src={imgUrl} alt={alt} className={className} /> : <div className={`${className} bg-white/5 animate-pulse`} />;
+};
+
 const RegionB = ({ isAdmin, data }) => {
   // step: 0(유니버스), 1(궤도 진입), 2(탐사 시작)
   const [step, setStep] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [path, setPath] = useState([]);
 
-  // 7개 아이콘 데이터 (Bike 아이콘 반영 및 명칭 엄격 준수)
+  // 7개 아이콘 데이터
   const menuData = {
     photos: {
       label: '나의 기록',
       icon: <Camera size={32} />,
       color: 'from-blue-500 to-cyan-400',
       sub: [
-        { label: '갤러리', detail: ['최근 사진', '즐겨찾기', '휴지통'] },
+        { label: '갤러리', detail: ['최근 사진', '즐겨찾기', '휴지통'] }, // 임시 이미지 삭제 및 원상 복구
         { label: '앨범별', detail: ['인물', '장소', '카테고리'] },
         { label: '백업', detail: ['클라우드 동기화', '저장 공간 관리'] }
       ]
     },
     travel: {
       label: 'Bike Travel',
-      icon: <Bike size={32} />, // 에러 해결을 위해 Bike로 교체 완료
+      icon: <Bike size={32} />, 
       color: 'from-indigo-500 to-purple-400',
       sub: [
         { label: '유라시아 2030', detail: ['루트 설계', '비자 확인', '체크리스트'] },
@@ -59,7 +86,7 @@ const RegionB = ({ isAdmin, data }) => {
       ]
     },
     hiking: {
-      label: '등    산',
+      label: '등   산',
       icon: <Mountain size={32} />,
       color: 'from-green-500 to-lime-400',
       sub: [
@@ -68,7 +95,7 @@ const RegionB = ({ isAdmin, data }) => {
       ]
     },
     swimming: {
-      label: '수    영',
+      label: '수   영',
       icon: <Waves size={32} />,
       color: 'from-sky-500 to-blue-400',
       sub: [
@@ -185,42 +212,4 @@ const RegionB = ({ isAdmin, data }) => {
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-bold text-slate-200">{subItem.label}</span>
                   <div className={`p-1.5 rounded-lg bg-gradient-to-br ${menuData[selectedCategory].color} opacity-20 group-hover:opacity-100 transition-all text-white`}>
-                    {React.cloneElement(menuData[selectedCategory].icon, { size: 16 })}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          /* 3단계: 상세 탐사 리스트 */
-          <div className="animate-in zoom-in-95 duration-300 h-full">
-            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 h-full">
-              <div className="flex items-center gap-3 mb-4 border-b border-white/5 pb-4">
-                <div className={`p-2 rounded-xl bg-gradient-to-br ${menuData[selectedCategory].color} text-white`}>
-                  {React.cloneElement(menuData[selectedCategory].icon, { size: 20 })}
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-white">{path[1]}</h3>
-                  <p className="text-[10px] text-slate-500 uppercase tracking-widest">Detail Exploration</p>
-                </div>
-              </div>
-              <div className="space-y-2">
-                {menuData[selectedCategory].sub.find(s => s.label === path[1]).detail.map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5 hover:border-white/10 transition-all group cursor-pointer">
-                    <div className="flex items-center gap-3">
-                      <Sparkles size={12} className="text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      <span className="text-xs text-slate-300 group-hover:text-white transition-colors">{item}</span>
-                    </div>
-                    <ChevronRight size={14} className="text-slate-600 group-hover:text-indigo-400 transition-colors" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-export default RegionB;
+                    {React.cloneElement(menuData[selectedCategory].icon,
