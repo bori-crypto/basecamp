@@ -3,20 +3,21 @@ import {
   Camera, Bike, Footprints, Fuel, Mountain, Waves, Dumbbell,
   ChevronLeft, Sparkles
 } from 'lucide-react';
-import DetailB from './DetailB';
+import MemoryArchive from './MemoryArchive';
 
 const RegionB = ({ isAdmin }) => {
   const [step, setStep] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedSub, setSelectedSub] = useState(null);
 
+  // menuData 개편: 나의 기록을 연도별 구조로 변경
   const menuData = {
     myRecords: {
       label: "나의 기록",
       icon: <Camera size={24} />,
       color: "from-blue-500 to-cyan-500",
       sub: [
-        { label: "2026", data: ["IMG_5985.JPG", "2026년 첫 투어 메모"] },
+        { label: "2026", data: ["IMG_5985.JPG", "첫 기록 메모"] },
         { label: "2025", data: [] }
       ]
     },
@@ -29,7 +30,6 @@ const RegionB = ({ isAdmin }) => {
         { label: "정비 일지", data: ["엔진오일 교체"] }
       ]
     },
-    // ... 나머지 카테고리는 오빠의 기존 코드와 동일 (생략 없이 실제 코드에는 모두 포함됨)
     running: { label: "러닝 기록", icon: <Footprints size={24} />, color: "from-emerald-500 to-teal-500", sub: [{ label: "최근 활동", data: [] }] },
     fueling: { label: "주유 기록", icon: <Fuel size={24} />, color: "from-orange-500 to-amber-500", sub: [{ label: "차계부", data: [] }] },
     hiking: { label: "등    산", icon: <Mountain size={24} />, color: "from-green-500 to-lime-500", sub: [{ label: "정복한 산", data: [] }] },
@@ -56,6 +56,7 @@ const RegionB = ({ isAdmin }) => {
 
   return (
     <div className="w-full h-full text-white font-sans">
+      {/* Navigation Breadcrumbs */}
       {step > 0 && (
         <div className="flex items-center space-x-2 mb-6 animate-in fade-in duration-500">
           <button onClick={goBack} className="p-2 hover:bg-white/10 rounded-full transition-colors">
@@ -76,6 +77,7 @@ const RegionB = ({ isAdmin }) => {
       )}
 
       <div className="relative">
+        {/* Step 0: Universe Grid */}
         {step === 0 && (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {Object.keys(menuData).map((key) => (
@@ -96,6 +98,7 @@ const RegionB = ({ isAdmin }) => {
           </div>
         )}
 
+        {/* Step 1: Orbit Submenu */}
         {step === 1 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {currentCategory?.sub.map((subItem, idx) => (
@@ -118,8 +121,9 @@ const RegionB = ({ isAdmin }) => {
           </div>
         )}
 
+        {/* Step 2: Exploration (MemoryArchive) */}
         {step === 2 && (
-          <DetailB selectedSub={selectedSub} isAdmin={isAdmin} />
+          <MemoryArchive selectedSub={selectedSub} isAdmin={isAdmin} />
         )}
       </div>
     </div>
