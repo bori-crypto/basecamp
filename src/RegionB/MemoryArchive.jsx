@@ -3,11 +3,12 @@ import { Sparkles, Trash2, Image as ImageIcon } from 'lucide-react';
 
 /**
  * [내부 컴포넌트] SecureImage
- * - Worker를 통해 인증 후 개별 이미지를 로드합니다.
+ * - Worker를 통해 인증 후 개별 이미지를 안전하게 로드합니다.
  */
 const SecureImage = ({ folder, fileName, alt, className }) => {
   const [imgUrl, setImgUrl] = useState(null);
   const imagePass = import.meta.env.VITE_IMAGE_PASS;
+  // 오빠의 실제 워커 주소로 정확히 고정했어!
   const workerUrl = "https://basecamp-image-gatekeeper.borimundi.workers.dev";
 
   useEffect(() => {
@@ -15,7 +16,7 @@ const SecureImage = ({ folder, fileName, alt, className }) => {
     const fetchImage = async () => {
       if (!fileName) return;
       try {
-        // [규격] folder/fileName (예: 2026/photo.jpg)
+        // [규격] folder/fileName (예: 2026/IMG_5985.JPG)
         const response = await fetch(`${workerUrl}/${folder}/${fileName}`, {
           method: 'GET',
           headers: { "X-Image-Pass": imagePass }
@@ -130,7 +131,7 @@ const MemoryArchive = ({ selectedSub, isAdmin }) => {
                   )}
                 </div>
               ) : (
-                /* 혹시 텍스트 파일이 섞여 있을 경우 */
+                /* 텍스트 데이터 렌더링 */
                 <div className="p-6 flex flex-col items-center justify-center min-h-[150px] text-center space-y-3">
                   <div className="p-3 bg-white/10 rounded-full">
                     <Sparkles className="text-cyan-400 w-6 h-6" />
