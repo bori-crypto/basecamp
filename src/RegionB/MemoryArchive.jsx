@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Sparkles, Trash2, Image as ImageIcon } from 'lucide-react';
 
 /**
- * SecureImage: Worker를 통해 보안 인증 후 R2 이미지를 로드합니다.
- * 환경 변수 VITE_IMAGE_PASS를 헤더에 포함합니다.
+ * [내부 컴포넌트] SecureImage
+ * - Worker를 통해 인증 후 개별 이미지를 로드합니다.
  */
 const SecureImage = ({ folder, fileName, alt, className }) => {
   const [imgUrl, setImgUrl] = useState(null);
@@ -15,7 +15,7 @@ const SecureImage = ({ folder, fileName, alt, className }) => {
     const fetchImage = async () => {
       if (!fileName) return;
       try {
-        // [경로 규격] folder/fileName (예: 2026/IMG_5985.JPG)
+        // [규격] folder/fileName (예: 2026/photo.jpg)
         const response = await fetch(`${workerUrl}/${folder}/${fileName}`, {
           method: 'GET',
           headers: { "X-Image-Pass": imagePass }
@@ -27,7 +27,7 @@ const SecureImage = ({ folder, fileName, alt, className }) => {
           if (isMounted) setImgUrl(objectUrl);
         }
       } catch (err) {
-        console.error("이미지 로드 에러:", err);
+        console.error("이미지 로드 실패:", err);
       }
     };
 
@@ -54,25 +54,29 @@ const SecureImage = ({ folder, fileName, alt, className }) => {
 };
 
 const MemoryArchive = ({ selectedSub, isAdmin }) => {
-  // R2에서 받아올 파일 목록 상태
+  // R2에서 실시간으로 받아올 목록 상태
   const [fileList, setFileList] = useState([]);
   const [loading, setLoading] = useState(true);
   
   const imagePass = import.meta.env.VITE_IMAGE_PASS;
   const workerUrl = "https://basecamp-image-gatekeeper.borimundi.workers.dev";
 
-  // 이미지 파일 확장자 체크 (jpg, jpeg, png, webp 대응)
+  // 확장자 체크 로직 (대소문자 무관)
   const isImageFile = (name) => {
     if (typeof name !== 'string') return false;
     return /\.(jpg|jpeg|png|webp)$/i.test(name);
   };
 
-  // 컴포넌트 마운트 시 R2 폴더 목록 자동 조회
+  /**
+   * [핵심 기능] R2 폴더 목록 자동 조회
+   * - 컴포넌트가 열릴 때 워커에 접속해 해당 폴더의 파일 리스트를 가져옵니다.
+   */
   useEffect(() => {
     const fetchFileList = async () => {
+      if (!selectedSub?.label) return;
       setLoading(true);
       try {
-        // [규격] 주소가 /로 끝나면 워커가 목록을 반환함 (예: /2026/)
+        // 워커 주소 끝에 '/'를 붙여 폴더 목록 요청 (예: /2026/)
         const response = await fetch(`${workerUrl}/${selectedSub.label}/`, {
           method: 'GET',
           headers: { "X-Image-Pass": imagePass }
@@ -83,25 +87,26 @@ const MemoryArchive = ({ selectedSub, isAdmin }) => {
           setFileList(data);
         }
       } catch (err) {
-        console.error("목록 불러오기 에러:", err);
+        console.error("목록 로드 에러:", err);
       } finally {
         setLoading(false);
       }
     };
 
-    if (selectedSub?.label) fetchFileList();
+    fetchFileList();
   }, [selectedSub.label, imagePass]);
 
   return (
     <div className="w-full py-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {/* 로딩 중일 때 표시할 스켈레톤 UI */}
+        
         {loading ? (
+          /* 로딩 중 스켈레톤 (오빠가 정한 그리드 유지) */
           Array(4).fill(0).map((_, i) => (
             <div key={i} className="aspect-square bg-white/5 animate-pulse rounded-2xl border border-white/10" />
           ))
         ) : (
-          /* 불러온 파일 목록을 순회하며 렌더링 */
+          /* R2에서 가져온 실제 파일 목록 렌더링 */
           fileList.map((item, idx) => (
             <div
               key={idx}
@@ -125,6 +130,7 @@ const MemoryArchive = ({ selectedSub, isAdmin }) => {
                   )}
                 </div>
               ) : (
+                /* 혹시 텍스트 파일이 섞여 있을 경우 */
                 <div className="p-6 flex flex-col items-center justify-center min-h-[150px] text-center space-y-3">
                   <div className="p-3 bg-white/10 rounded-full">
                     <Sparkles className="text-cyan-400 w-6 h-6" />
@@ -147,6 +153,7 @@ const MemoryArchive = ({ selectedSub, isAdmin }) => {
         )}
       </div>
 
+      {/* 목록이 비어있을 때 처리 */}
       {(!loading && fileList.length === 0) && (
         <div className="py-20 text-center">
           <p className="text-white/20 text-sm font-light italic">저장된 기록이 없습니다.</p>
