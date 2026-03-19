@@ -54,48 +54,87 @@ const SecureImage = ({ folder, fileName, alt, className }) => {
 };
 
 const MemoryArchive = ({ selectedSub, isAdmin }) => {
+  // R2에서 받아올 파일 목록 상태
+  const [fileList, setFileList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  const imagePass = import.meta.env.VITE_IMAGE_PASS;
+  const workerUrl = "https://basecamp-image-gatekeeper.borimundi.workers.dev";
+
   // 이미지 파일 확장자 체크 (jpg, jpeg, png, webp 대응)
   const isImageFile = (name) => {
     if (typeof name !== 'string') return false;
     return /\.(jpg|jpeg|png|webp)$/i.test(name);
   };
 
+  // 컴포넌트 마운트 시 R2 폴더 목록 자동 조회
+  useEffect(() => {
+    const fetchFileList = async () => {
+      setLoading(true);
+      try {
+        // [규격] 주소가 /로 끝나면 워커가 목록을 반환함 (예: /2026/)
+        const response = await fetch(`${workerUrl}/${selectedSub.label}/`, {
+          method: 'GET',
+          headers: { "X-Image-Pass": imagePass }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setFileList(data);
+        }
+      } catch (err) {
+        console.error("목록 불러오기 에러:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (selectedSub?.label) fetchFileList();
+  }, [selectedSub.label, imagePass]);
+
   return (
     <div className="w-full py-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {selectedSub?.data?.map((item, idx) => (
-          <div
-            key={idx}
-            className="group relative overflow-hidden rounded-2xl bg-white/5 backdrop-blur-md border border-white/10
-                       transition-all duration-500 cursor-pointer
-                       hover:scale-105 hover:rotate-6 hover:border-white/30
-                       hover:shadow-[0_0_25px_rgba(255,255,255,0.15)]"
-          >
-            {isImageFile(item) ? (
-              <div className="aspect-square relative">
-                <SecureImage 
-                  folder={selectedSub.label} // 부모에서 받은 연도(2026 등)를 폴더로 사용
-                  fileName={item}
-                  alt={`Memory-${idx}`}
-                  className="w-full h-full"
-                />
-                {isAdmin && (
-                  <button className="absolute top-2 right-2 p-2 bg-black/50 backdrop-blur-md rounded-full text-red-400 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                    <Trash2 size={16} />
-                  </button>
-                )}
-              </div>
-            ) : (
-              /* 텍스트 데이터 렌더링 */
-              <div className="p-6 flex flex-col items-center justify-center min-h-[150px] text-center space-y-3">
-                <div className="p-3 bg-white/10 rounded-full">
-                  <Sparkles className="text-cyan-400 w-6 h-6" />
+        {/* 로딩 중일 때 표시할 스켈레톤 UI */}
+        {loading ? (
+          Array(4).fill(0).map((_, i) => (
+            <div key={i} className="aspect-square bg-white/5 animate-pulse rounded-2xl border border-white/10" />
+          ))
+        ) : (
+          /* 불러온 파일 목록을 순회하며 렌더링 */
+          fileList.map((item, idx) => (
+            <div
+              key={idx}
+              className="group relative overflow-hidden rounded-2xl bg-white/5 backdrop-blur-md border border-white/10
+                         transition-all duration-500 cursor-pointer
+                         hover:scale-105 hover:rotate-6 hover:border-white/30
+                         hover:shadow-[0_0_25px_rgba(255,255,255,0.15)]"
+            >
+              {isImageFile(item) ? (
+                <div className="aspect-square relative">
+                  <SecureImage 
+                    folder={selectedSub.label}
+                    fileName={item}
+                    alt={`Memory-${idx}`}
+                    className="w-full h-full"
+                  />
+                  {isAdmin && (
+                    <button className="absolute top-2 right-2 p-2 bg-black/50 backdrop-blur-md rounded-full text-red-400 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                      <Trash2 size={16} />
+                    </button>
+                  )}
                 </div>
-                <span className="text-white/80 font-medium text-sm leading-relaxed">{item}</span>
-              </div>
-            )}
-          </div>
-        ))}
+              ) : (
+                <div className="p-6 flex flex-col items-center justify-center min-h-[150px] text-center space-y-3">
+                  <div className="p-3 bg-white/10 rounded-full">
+                    <Sparkles className="text-cyan-400 w-6 h-6" />
+                  </div>
+                  <span className="text-white/80 font-medium text-sm leading-relaxed">{item}</span>
+                </div>
+              )}
+            </div>
+          ))
+        )}
         
         {/* 관리자 모드: 사진 추가 버튼 */}
         {isAdmin && (
@@ -108,7 +147,7 @@ const MemoryArchive = ({ selectedSub, isAdmin }) => {
         )}
       </div>
 
-      {(!selectedSub?.data || selectedSub.data.length === 0) && (
+      {(!loading && fileList.length === 0) && (
         <div className="py-20 text-center">
           <p className="text-white/20 text-sm font-light italic">저장된 기록이 없습니다.</p>
         </div>
