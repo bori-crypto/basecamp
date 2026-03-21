@@ -1,160 +1,272 @@
-import React, { useState, useContext } from 'react'; // ✅ useContext 추가
+import React, { useState, useEffect, useContext } from 'react'; // ✅ useContext 추가
 import { 
-  Camera, Bike, Footprints, Fuel, Mountain, Waves, Dumbbell, 
-  ChevronLeft, ChevronRight, Sparkles 
+  Camera, 
+  Bike, 
+  Footprints, 
+  Fuel, 
+  Mountain, 
+  Waves, 
+  Dumbbell,
+  ChevronLeft, 
+  ChevronRight, 
+  Sparkles
 } from 'lucide-react';
-
+// 오늘 결정한 상세 페이지 임포트
 import MemoryArchive from './RegionB/MemoryArchive';
-import RunningLog from './RegionB/RunningLog'; // ✅ RunningLog 임포트 추가
-import { AppContext } from './App'; // ✅ AppContext 임포트 추가
+// ✅ 새로 추가할 러닝 로그 및 Context 임포트
+import RunningLog from './RegionB/RunningLog';
+import { AppContext } from './App';
 
-const RegionB = ({ isAdmin }) => {
+// R2 사진 보안 컴포넌트 (MemoryArchive 외부에서 쓰일 경우 대비 유지)
+const SecureImage = ({ src, alt, className }) => {
+  const [imgUrl, setImgUrl] = useState(null);
+  const imagePass = import.meta.env.VITE_IMAGE_PASS;
+  const workerUrl = "https://basecamp-image-gatekeeper.borimundi.workers.dev";
+
+  useEffect(() => {
+    const fetchImage = async () => {
+      try {
+        const response = await fetch(`${workerUrl}/${src}`, {
+          headers: { "X-Image-Pass": imagePass }
+        });
+        if (response.ok) {
+          const blob = await response.blob();
+          setImgUrl(URL.createObjectURL(blob));
+        }
+      } catch (err) {
+        console.error("Image load failed:", err);
+      }
+    };
+    fetchImage();
+    return () => imgUrl && URL.revokeObjectURL(imgUrl);
+  }, [src]);
+
+  return imgUrl ? <img src={imgUrl} alt={alt} className={className} /> : <div className={`${className} bg-white/5 animate-pulse`} />;
+};
+
+const RegionB = ({ isAdmin, data }) => {
+  // step: 0(유니버스), 1(궤도 진입), 2(탐사 시작)
   const [step, setStep] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [path, setPath] = useState([]);
 
-  // ✅ App.jsx에서 뿌려준 워커 주소와 비밀번호 가져오기
+  // ✅ App.jsx에서 워커 주소와 비밀번호 가져오기
   const { RUNNING_WORKER_URL, adminPassword } = useContext(AppContext);
 
+  // 7개 아이콘 데이터 (오빠의 원본 규격 및 키값 복구)
   const menuData = {
     photos: {
       label: '나의 기록',
-      icon: <Camera size={24} />,
+      icon: <Camera size={32} />, // 원본 크기 32 복구
       color: 'from-blue-500 to-cyan-400',
-      sub: [{ label: '2026' }, { label: '2025' }]
+      sub: [
+        { label: '2026', data: ["IMG_5985.JPG", "첫 기록 메모"] }, // 오늘 개편한 연도별 구조
+        { label: '2025', data: [] }
+      ]
     },
     travel: {
       label: 'Bike Travel',
-      icon: <Bike size={24} />,
+      icon: <Bike size={32} />, 
       color: 'from-indigo-500 to-purple-400',
-      sub: [{ label: '유라시아 2030', detail: ['루트 설계', '비자 확인'] }, { label: '국내 투어', detail: ['강원도 코스'] }]
+      sub: [
+        { label: '유라시아 2030', detail: ['루트 설계', '비자 확인', '체크리스트'] },
+        { label: '국내 투어', detail: ['경상도 코스', '강원도 코스', '맛집 리스트'] },
+        { label: '계획서', detail: ['지출 예산', '숙박 예약', '항공권'] }
+      ]
     },
-    running: { 
-      label: '러닝 기록', 
-      icon: <Footprints size={24} />, 
-      color: 'from-emerald-500 to-teal-400', 
-      sub: [{ label: '러닝 로그' }] 
+    running: {
+      label: '러닝 기록',
+      icon: <Footprints size={32} />,
+      color: 'from-emerald-500 to-teal-400',
+      sub: [
+        { label: '러닝 로그', detail: ['주간 기록', '월간 리포트', '개인 기록'] },
+        { label: '장비 관리', detail: ['신발 마일리지', '워치 설정'] }
+      ]
     },
-    fuel: { 
-      label: '주유 기록', 
-      icon: <Fuel size={24} />, 
-      color: 'from-orange-500 to-amber-400', 
-      sub: [{ label: '주유 기록' }] 
+    fuel: {
+      label: '주유 기록',
+      icon: <Fuel size={32} />,
+      color: 'from-orange-500 to-amber-400',
+      sub: [
+        { label: '주유 기록', detail: ['최근 기록', '누적 금액', '주유소 찾기'] },
+        { label: '연비 분석', detail: ['월별 연비'] }
+      ]
     },
-    hiking: { 
-      label: '등 산', 
-      icon: <Mountain size={24} />, 
-      color: 'from-green-500 to-lime-400', 
-      sub: [{ label: '등산 기록' }] 
+    hiking: {
+      label: '등   산',
+      icon: <Mountain size={32} />,
+      color: 'from-green-500 to-lime-400',
+      sub: [
+        { label: '등산 기록', detail: ['최근 등반', '누적 고도'] },
+        { label: '장비 체크', detail: ['등산화 상태'] }
+      ]
     },
-    swimming: { 
-      label: '수 영', 
-      icon: <Waves size={24} />, 
-      color: 'from-sky-500 to-blue-400', 
-      sub: [{ label: '수영 일지' }] 
+    swimming: {
+      label: '수   영',
+      icon: <Waves size={32} />,
+      color: 'from-sky-500 to-blue-400',
+      sub: [
+        { label: '수영 일지', detail: ['바퀴 수', '영법 분석'] }
+      ]
     },
-    weight: { 
-      label: '강철 체력', 
-      icon: <Dumbbell size={24} />, 
-      color: 'from-slate-500 to-gray-400', 
-      sub: [{ label: '웨이트' }] 
+    weight: {
+      label: '강철 체력',
+      icon: <Dumbbell size={32} />,
+      color: 'from-slate-500 to-gray-400',
+      sub: [
+        { label: '웨이트', detail: ['3대 측정', '분할 루틴'] }
+      ]
     }
   };
 
-  const handleMainClick = (key) => { 
+  const handleMainClick = (key) => {
     setSelectedCategory(key);
-    setPath([menuData[key].label]); 
-    setStep(1); 
+    setPath([menuData[key].label]);
+    setStep(1);
   };
 
-  const handleSubClick = (subItem) => { 
+  const handleSubClick = (subItem) => {
     setPath([path[0], subItem.label]);
-    setStep(2); 
+    setStep(2);
   };
-  
-  const goBack = () => { 
-    if (step === 2) setStep(1); 
-    else { 
+
+  const jumpToStep = (targetStep) => {
+    if (targetStep === 0) {
       setStep(0);
-      setPath([]); 
-    } 
+      setSelectedCategory(null);
+      setPath([]);
+    } else if (targetStep === 1 && step === 2) {
+      setStep(1);
+      setPath([path[0]]);
+    }
+  };
+
+  const goBack = () => {
+    if (step === 2) jumpToStep(1);
+    else jumpToStep(0);
   };
 
   return (
-    <div className="flex flex-col h-full text-white p-6">
-      {step > 0 && (
-        <div className="flex items-center gap-2 mb-6 text-sm font-medium tracking-wide">
-          <button onClick={goBack} className="flex items-center gap-1 text-slate-400 hover:text-white transition-colors">
-            <ChevronLeft size={16} />
-            뒤로가기
-          </button>
-          <span className="text-slate-600">|</span>
-          <button onClick={() => setStep(0)} className="hover:text-indigo-400 transition-colors uppercase">
-            유니버스
-          </button>
-          {path.map((p, i) => (
-            <React.Fragment key={i}>
-              <ChevronRight size={14} className="text-slate-600" />
-              <span className={i === path.length - 1 ? "text-slate-100 font-bold" : "text-slate-400"}>{p}</span>
-            </React.Fragment>
-          ))}
-        </div>
-      )}
-
-      {step === 0 ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 flex-1">
-          {Object.keys(menuData).map((key) => (
-            <div 
-              key={key}
-              onClick={() => handleMainClick(key)} 
-              className={`relative p-4 bg-gradient-to-br ${menuData[key].color} rounded-2xl text-white shadow-lg transition-all duration-500 cursor-pointer hover:scale-105`}
+    <div className="w-full h-full p-4 flex flex-col bg-transparent text-slate-200 relative overflow-hidden">
+      
+      {/* 상단 네비게이션: 오빠의 원본 로직 복구 */}
+      <div className="flex items-center gap-3 mb-8 relative z-10 min-h-[40px]">
+        {step > 0 && (
+          <>
+            <button 
+              onClick={goBack} 
+              className="group flex items-center gap-2 bg-white/5 backdrop-blur-md px-3 py-1.5 rounded-xl hover:bg-white/10 transition-all text-xs font-medium border border-white/10"
             >
-              <div className="flex flex-col items-center justify-center h-full gap-3 py-4">
-                {menuData[key].icon}
-                <span className="font-bold tracking-wider">{menuData[key].label}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : step === 1 ? (
-        <div className="grid grid-cols-1 gap-4 flex-1 animate-fade-in-up">
-          {menuData[selectedCategory].sub.map((sub, idx) => (
-            <div 
-              key={idx} 
-              onClick={() => handleSubClick(sub)} 
-              className="group bg-white/5 backdrop-blur-sm border border-white/5 hover:border-indigo-500/30 p-4 rounded-2xl cursor-pointer transition-all hover:bg-white/10 flex justify-between items-center"
-            >
-              <span className="font-semibold text-lg">{sub.label}</span>
-              <div className={`p-1.5 rounded-lg bg-gradient-to-br ${menuData[selectedCategory].color} opacity-20 group-hover:opacity-100 transition-all text-white`}>
-                {React.cloneElement(menuData[selectedCategory].icon, { size: 16 })}
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="flex-1 w-full flex flex-col animate-fade-in-up overflow-y-auto pr-2">
-          {/* ✅ 선택된 카테고리에 따라 분기 렌더링 */}
-          {selectedCategory === 'photos' && (
-            <MemoryArchive selectedSub={{ label: path[1] }} isAdmin={isAdmin} />
-          )}
+              <ChevronLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" /> 
+              뒤로가기
+            </button>
+            
+            <div className="flex items-center gap-2 ml-2 text-[11px] font-medium text-slate-500">
+              <button 
+                onClick={() => jumpToStep(0)}
+                className="hover:text-indigo-400 transition-colors uppercase tracking-wider"
+              >
+                유니버스
+              </button>
 
-          {selectedCategory === 'running' && (
-            <RunningLog 
-              isAdmin={isAdmin} 
-              workerUrl={RUNNING_WORKER_URL} 
-              adminPassword={adminPassword} 
-            />
-          )}
-
-          {selectedCategory !== 'photos' && selectedCategory !== 'running' && (
-            <div className="text-center mt-10 text-gray-400 flex flex-col items-center justify-center h-full">
-              <Sparkles size={48} className="mb-4 opacity-20" />
-              <h3 className="text-xl font-bold text-white mb-2">{path[1]}</h3>
-              <p>Detail Exploration 준비 중</p>
+              {path.map((p, i) => (
+                <React.Fragment key={i}>
+                  <ChevronRight size={12} className="opacity-40" />
+                  <button 
+                    onClick={() => i === 0 && jumpToStep(1)}
+                    className={`transition-colors whitespace-pre ${i === path.length - 1 ? "text-slate-100 font-bold cursor-default" : "hover:text-slate-300 cursor-pointer"}`}
+                  >
+                    {p}
+                  </button>
+                </React.Fragment>
+              ))}
             </div>
-          )}
-        </div>
-      )}
+          </>
+        )}
+      </div>
+
+      {/* 메인 콘텐츠 구역 */}
+      <div className="flex-1 relative z-10 overflow-y-auto scrollbar-hide">
+        {step === 0 ? (
+          /* 1단계: 유니버스 메인 (오빠의 원본 4열 그리드 복구) */
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 animate-in zoom-in-95 duration-300">
+            {Object.keys(menuData).map((key) => (
+              <div key={key} className="group flex flex-col items-center justify-center p-3">
+                <div 
+                  onClick={() => handleMainClick(key)}
+                  className={`relative p-4 bg-gradient-to-br ${menuData[key].color} rounded-2xl text-white shadow-lg transition-all duration-500 cursor-pointer 
+                  hover:scale-110 hover:rotate-6 hover:shadow-[0_0_30px_-5px_rgba(255,255,255,0.3)]`}
+                >
+                   {menuData[key].icon}
+                </div>
+                <div className="mt-3 text-center">
+                  <div className="text-xs font-bold text-slate-300 transition-colors whitespace-pre group-hover:text-white">
+                    {menuData[key].label}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : step === 1 ? (
+          /* 2단계: 서브 메뉴 카드 */
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 animate-in slide-in-from-bottom-5 duration-500">
+            {menuData[selectedCategory].sub.map((subItem, idx) => (
+              <div 
+                key={idx}
+                className="group bg-white/5 backdrop-blur-sm border border-white/5 hover:border-indigo-500/30 p-4 rounded-2xl cursor-pointer transition-all hover:bg-white/10"
+                onClick={() => handleSubClick(subItem)}
+              >
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-bold text-slate-200">{subItem.label}</span>
+                  <div className={`p-1.5 rounded-lg bg-gradient-to-br ${menuData[selectedCategory].color} opacity-20 group-hover:opacity-100 transition-all text-white`}>
+                    {React.cloneElement(menuData[selectedCategory].icon, { size: 16 })}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          /* 3단계: 상세 탐사 (나의 기록일 때만 MemoryArchive 호출, 러닝 기록일 때 RunningLog 호출, 나머지는 기존 리스트) */
+          <div className="animate-in zoom-in-95 duration-300 h-full">
+            {selectedCategory === 'photos' ? (
+              <MemoryArchive 
+                selectedSub={menuData.photos.sub.find(s => s.label === path[1])} 
+                isAdmin={isAdmin} 
+              />
+            ) : selectedCategory === 'running' && path[1] === '러닝 로그' ? (
+              /* ✅ 러닝 로그 메뉴를 클릭했을 때만 RunningLog 컴포넌트 렌더링 */
+              <RunningLog 
+                isAdmin={isAdmin} 
+                workerUrl={RUNNING_WORKER_URL} 
+                adminPassword={adminPassword} 
+              />
+            ) : (
+              <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 h-full">
+                <div className="flex items-center gap-3 mb-4 border-b border-white/5 pb-4">
+                  <div className={`p-2 rounded-xl bg-gradient-to-br ${menuData[selectedCategory].color} text-white`}>
+                    {React.cloneElement(menuData[selectedCategory].icon, { size: 20 })}
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">{path[1]}</h3>
+                    <p className="text-[10px] text-slate-500 uppercase tracking-widest">Detail Exploration</p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {menuData[selectedCategory].sub.find(s => s.label === path[1]).detail?.map((item, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5 hover:border-white/10 transition-all group cursor-pointer">
+                      <div className="flex items-center gap-3">
+                        <Sparkles size={12} className="text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <span className="text-xs text-slate-300 group-hover:text-white transition-colors">{item}</span>
+                      </div>
+                      <ChevronRight size={14} className="text-slate-600 group-hover:text-indigo-400 transition-colors" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
