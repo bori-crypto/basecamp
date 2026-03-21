@@ -1,0 +1,7 @@
+name = "basecamp-run-bridge"
+main = "worker/running-log-bridge.js"
+compatibility_date = "2026-03-21"
+
+[vars]
+# 관리자 암호를 여기에 직접 넣거나 Cloudflare 대시보드(Secret)에서 설정해!
+ADMIN_SECURE = "yh4181!@"
