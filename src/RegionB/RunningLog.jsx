@@ -64,10 +64,9 @@ export default function RunningLog({ isAdmin, workerUrl, adminPassword }) {
       const res = await fetch(`${workerUrl}`, { method: 'GET' });
       const rawData = await res.json();
       
-      // ✅ 도면의 'avg_pace'를 paceSec으로 변환하여 차트에 매핑
       const processedMonthly = (rawData.monthly || []).map(item => ({
         ...item,
-        total_distance: Number(item.total_distance) || 0, // 숫자 변환 (Y축 복구 핵심)
+        total_distance: Number(item.total_distance) || 0,
         avg_heart_rate: Number(item.avg_heart_rate) || 0,
         paceSec: paceToSeconds(item.avg_pace) 
       }));
@@ -105,7 +104,6 @@ export default function RunningLog({ isAdmin, workerUrl, adminPassword }) {
   return (
     <div className="flex flex-col gap-6 w-full text-white pb-10">
       
-      {/* ⚡ 데이터 입력 섹션 (GUEST는 차트만 감상) */}
       {isAdmin && (
         <div className="bg-white/10 backdrop-blur-md border border-white/20 p-5 rounded-2xl shadow-lg">
           <h2 className="text-lg font-bold mb-4 flex items-center gap-2">⚡ 새 러닝 기록 입력</h2>
@@ -127,17 +125,23 @@ export default function RunningLog({ isAdmin, workerUrl, adminPassword }) {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              {/* ✅ 도면 헤더 'location' 매핑 및 <option> 태그 복구 */}
+              {/* ✅ 장소 목록 렌더링 수정 */}
               <select name="location" value={formData.location} onChange={handleInputChange} 
                 className="bg-black/40 border border-white/10 rounded-xl p-3 h-12 outline-none appearance-none">
                 <option value="">장소 선택</option>
-                {data.location.map((l, i) => <option key={i} value={l.location || Object.values(l)[0]}>{l.location || Object.values(l)[0]}</option>)}
+                {data.location.map((l, i) => {
+                  const val = l.location || Object.values(l)[0];
+                  return <option key={i} value={val}>{val}</option>;
+                })}
               </select>
-              {/* ✅ 도면 헤더 'gear' 매핑 및 <option> 태그 복구 */}
+              {/* ✅ 장비 목록 렌더링 수정 */}
               <select name="gear" value={formData.gear} onChange={handleInputChange} 
                 className="bg-black/40 border border-white/10 rounded-xl p-3 h-12 outline-none appearance-none">
                 <option value="">장비 선택</option>
-                {data.gear.map((g, i) => <option key={i} value={g.gear || Object.values(g)[0]}>{g.gear || Object.values(g)[0]}</option>)}
+                {data.gear.map((g, i) => {
+                  const val = g.gear || Object.values(g)[0];
+                  return <option key={i} value={val}>{val}</option>;
+                })}
               </select>
             </div>
 
@@ -151,7 +155,6 @@ export default function RunningLog({ isAdmin, workerUrl, adminPassword }) {
         </div>
       )}
 
-      {/* 📈 통계 섹션 */}
       {loading ? (
         <div className="text-center py-20 animate-pulse text-gray-500 text-xs">Synchronizing...</div>
       ) : (
@@ -162,17 +165,10 @@ export default function RunningLog({ isAdmin, workerUrl, adminPassword }) {
               <ComposedChart data={data.monthly} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                 <XAxis dataKey="month" stroke="#64748b" fontSize={10} tickMargin={10} />
-                
-                {/* 좌측 Y축: 거리와 심박수 숫자 복구 */}
                 <YAxis yAxisId="left" stroke="#64748b" fontSize={10} />
-                
-                {/* 우측 Y축: 페이스 기준 (역순) */}
                 <YAxis yAxisId="right" orientation="right" reversed stroke="#64748b" fontSize={10} tickFormatter={formatPace} />
-                
                 <RechartsTooltip content={<CustomTooltip />} />
                 <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '20px' }} />
-                
-                {/* ✅ 도면 헤더 매핑 (total_distance, avg_heart_rate) */}
                 <Bar yAxisId="left" dataKey="total_distance" name="거리" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={18} />
                 <Line yAxisId="left" type="monotone" dataKey="avg_heart_rate" name="심박" stroke="#ef4444" strokeWidth={2} dot={{ r: 3, fill: '#ef4444' }} />
                 <Line yAxisId="right" type="monotone" dataKey="paceSec" name="페이스" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981' }} />
