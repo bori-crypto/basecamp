@@ -4,17 +4,15 @@ import {
   Tooltip as RechartsTooltip, Legend
 } from 'recharts';
 
-// --- 헬퍼 함수: 페이스(MM:SS)를 초 단위로 변환 ---
 const paceToSeconds = (paceStr) => {
   if (!paceStr) return 0;
   const str = String(paceStr);
   const parts = str.split(':').map(Number);
-  if (parts.length === 2) return parts[0] * 60 + parts[1]; // MM:SS
-  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2]; // HH:MM:SS
+  if (parts.length === 2) return parts[0] * 60 + parts[1];
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
   return 0;
 };
 
-// --- 초 단위를 다시 페이스(MM:SS)로 변환 ---
 const formatPace = (seconds) => {
   if (!seconds) return "00:00";
   const m = Math.floor(seconds / 60);
@@ -22,7 +20,6 @@ const formatPace = (seconds) => {
   return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
 };
 
-// --- 커스텀 툴팁 ---
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
@@ -50,7 +47,6 @@ const CustomTooltip = ({ active, payload, label }) => {
 export default function RunningLog({ isAdmin, workerUrl, adminPassword }) {
   const [data, setData] = useState({ monthly: [], gear: [], location: [] });
   const [loading, setLoading] = useState(true);
-
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     distance: '', time: '', heart_rate: '', cadence: '', location: '', gear: '', memo: ''
@@ -63,22 +59,19 @@ export default function RunningLog({ isAdmin, workerUrl, adminPassword }) {
     try {
       const res = await fetch(`${workerUrl}`, { method: 'GET' });
       const rawData = await res.json();
-      
       const processedMonthly = (rawData.monthly || []).map(item => ({
         ...item,
         total_distance: parseFloat(item.total_distance) || 0,
         avg_heart_rate: parseFloat(item.avg_heart_rate) || 0,
         paceSec: paceToSeconds(item.avg_pace) 
       }));
-
       setData({ 
         monthly: processedMonthly, 
         gear: rawData.gear || [], 
         location: rawData.location || [] 
       });
-    } catch (error) {
-      console.error("Data load failed:", error);
-    } finally { setLoading(false); }
+    } catch (error) { console.error("Data load failed:", error); }
+    finally { setLoading(false); }
   };
 
   const handleInputChange = (e) => {
@@ -103,41 +96,28 @@ export default function RunningLog({ isAdmin, workerUrl, adminPassword }) {
 
   return (
     <div className="flex flex-col gap-6 w-full text-white pb-10">
-      
       {isAdmin && (
         <div className="bg-white/10 backdrop-blur-md border border-white/20 p-5 rounded-2xl shadow-lg">
           <h2 className="text-lg font-bold mb-4 flex items-center gap-2">⚡ 새 러닝 기록 입력</h2>
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
             <div className="grid grid-cols-2 gap-3">
-              <input type="date" name="date" value={formData.date} onChange={handleInputChange} required 
-                className="bg-black/40 border border-white/10 rounded-xl p-3 text-white h-12 outline-none" />
-              <input type="number" step="0.1" name="distance" placeholder="거리 (km)" value={formData.distance} onChange={handleInputChange} required 
-                className="bg-black/40 border border-white/10 rounded-xl p-3 text-white h-12 outline-none" />
+              <input type="date" name="date" value={formData.date} onChange={handleInputChange} required className="bg-black/40 border border-white/10 rounded-xl p-3 text-white h-12 outline-none" />
+              <input type="number" step="0.1" name="distance" placeholder="거리 (km)" value={formData.distance} onChange={handleInputChange} required className="bg-black/40 border border-white/10 rounded-xl p-3 text-white h-12 outline-none" />
             </div>
-
             <div className="grid grid-cols-3 gap-3">
-              <input type="text" name="time" placeholder="00:00:00" value={formData.time} onChange={handleInputChange} required 
-                className="bg-black/40 border border-white/10 rounded-xl p-3 text-white h-12 outline-none" />
-              <input type="number" name="heart_rate" placeholder="심박" value={formData.heart_rate} onChange={handleInputChange}
-                className="bg-black/40 border border-white/10 rounded-xl p-3 text-white h-12 outline-none" />
-              <input type="number" name="cadence" placeholder="케이던스" value={formData.cadence} onChange={handleInputChange}
-                className="bg-black/40 border border-white/10 rounded-xl p-3 text-white h-12 outline-none" />
+              <input type="text" name="time" placeholder="00:00:00" value={formData.time} onChange={handleInputChange} required className="bg-black/40 border border-white/10 rounded-xl p-3 text-white h-12 outline-none" />
+              <input type="number" name="heart_rate" placeholder="심박" value={formData.heart_rate} onChange={handleInputChange} className="bg-black/40 border border-white/10 rounded-xl p-3 text-white h-12 outline-none" />
+              <input type="number" name="cadence" placeholder="케이던스" value={formData.cadence} onChange={handleInputChange} className="bg-black/40 border border-white/10 rounded-xl p-3 text-white h-12 outline-none" />
             </div>
-
             <div className="grid grid-cols-2 gap-3">
-              {/* ✅ 정밀 타격: 장소 목록 출력 로직 수리 */}
-              <select name="location" value={formData.location} onChange={handleInputChange} 
-                className="bg-black/40 border border-white/10 rounded-xl p-3 h-12 outline-none appearance-none">
+              <select name="location" value={formData.location} onChange={handleInputChange} className="bg-black/40 border border-white/10 rounded-xl p-3 h-12 outline-none appearance-none">
                 <option value="">장소 선택</option>
                 {data.location.map((l, i) => {
                   const val = l.location || Object.values(l)[0];
                   return <option key={i} value={val}>{val}</option>;
                 })}
               </select>
-
-              {/* ✅ 정밀 타격: 장비 목록 출력 로직 수리 */}
-              <select name="gear" value={formData.gear} onChange={handleInputChange} 
-                className="bg-black/40 border border-white/10 rounded-xl p-3 h-12 outline-none appearance-none">
+              <select name="gear" value={formData.gear} onChange={handleInputChange} className="bg-black/40 border border-white/10 rounded-xl p-3 h-12 outline-none appearance-none">
                 <option value="">장비 선택</option>
                 {data.gear.map((g, i) => {
                   const val = g.gear || Object.values(g)[0];
@@ -145,22 +125,14 @@ export default function RunningLog({ isAdmin, workerUrl, adminPassword }) {
                 })}
               </select>
             </div>
-
-            <input type="text" name="memo" placeholder="메모" value={formData.memo} onChange={handleInputChange}
-              className="bg-black/40 border border-white/10 rounded-xl p-3 text-white h-12 outline-none" />
-
-            <button type="submit" className="bg-blue-600 active:scale-95 transition-all py-4 rounded-xl font-bold shadow-lg mt-2 text-white">
-              기록 저장하기
-            </button>
+            <input type="text" name="memo" placeholder="메모" value={formData.memo} onChange={handleInputChange} className="bg-black/40 border border-white/10 rounded-xl p-3 text-white h-12 outline-none" />
+            <button type="submit" className="bg-blue-600 active:scale-95 transition-all py-4 rounded-xl font-bold shadow-lg mt-2 text-white">기록 저장하기</button>
           </form>
         </div>
       )}
-
-      {loading ? (
-        <div className="text-center py-20 animate-pulse text-gray-500 text-xs">Synchronizing...</div>
-      ) : (
+      {!loading && (
         <div className="bg-white/10 backdrop-blur-md border border-white/20 p-5 rounded-2xl shadow-lg">
-          <h3 className="text-lg font-bold mb-6 flex items-center gap-2 font-['Inter']">📈 통계</h3>
+          <h3 className="text-lg font-bold mb-6 flex items-center gap-2">📈 통계</h3>
           <div className="h-[280px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={data.monthly} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
