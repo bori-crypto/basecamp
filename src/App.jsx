@@ -19,8 +19,8 @@ export const AppProvider = ({ children }) => {
   const [realTimeData, setRealTimeData] = useState(null);
 
   const WORKER_URL = 'https://sparkling-credit-38ce.borimundi.workers.dev';
-  
-  // 🧹 찌꺼기 제거: RUNNING_WORKER_URL 삭제 완료
+  // ✅ 추가: 러닝 로그 전용 워커 URL
+  const RUNNING_WORKER_URL = 'https://basecamp-run-bridge.borimundi.workers.dev';
 
   const fetchDashboardData = async (password = adminPassword) => {
     try {
@@ -28,7 +28,6 @@ export const AppProvider = ({ children }) => {
       if (password) headers["X-Admin-Password"] = password;
 
       const response = await fetch(WORKER_URL, { headers });
-
       if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
           throw new Error('암호가 올바르지 않습니다.');
@@ -74,6 +73,7 @@ export const AppProvider = ({ children }) => {
   const pushPage = (id, title, icon) => setHistory(prev => [...prev, { id, title, icon }]);
   const popPage = () => history.length > 1 && setHistory(prev => prev.slice(0, -1));
   const jumpTo = (index) => setHistory(prev => prev.slice(0, index + 1));
+
   const currentPage = useMemo(() => history[history.length - 1], [history]);
 
   useEffect(() => {
@@ -83,11 +83,11 @@ export const AppProvider = ({ children }) => {
   }, [adminPassword]);
 
   return (
-    // 🧹 찌꺼기 제거 및 복원: RUNNING_WORKER_URL 대신 원래 쓰던 WORKER_URL을 내보냄 (RegionB에서 사용)
+    // ✅ 수정: Provider value에 adminPassword와 RUNNING_WORKER_URL 추가
     <AppContext.Provider value={{
       isPrivateMode, togglePrivateMode, history, currentPage,
       pushPage, popPage, jumpTo, realTimeData,
-      adminPassword, WORKER_URL 
+      adminPassword, RUNNING_WORKER_URL
     }}>
       {children}
     </AppContext.Provider>
@@ -97,17 +97,18 @@ export const AppProvider = ({ children }) => {
 const Breadcrumbs = () => {
   const { history, jumpTo } = useContext(AppContext);
   if (history.length <= 1) return null;
+
   return (
     <div className="flex items-center gap-2 mb-4">
       {history.map((step, idx) => (
         <React.Fragment key={step.id}>
-          <button
-            onClick={() => jumpTo(idx)}
+          <button 
+            onClick={() => jumpTo(idx)} 
             className={`text-[10px] font-black uppercase tracking-[0.2em] ${idx === history.length - 1 ? 'text-indigo-400' : 'text-slate-300'}`}
           >
             {step.title}
           </button>
-          {idx < history.length - 1 && <span className="text-slate-500"> / </span>}
+          {idx < history.length - 1 && <ChevronRight size={12} className="text-slate-500" />}
         </React.Fragment>
       ))}
     </div>
@@ -116,17 +117,22 @@ const Breadcrumbs = () => {
 
 const Layout = ({ children }) => {
   const { isPrivateMode, togglePrivateMode } = useContext(AppContext);
+
   return (
-    <div className="min-h-screen bg-slate-950 p-4 lg:p-8 flex flex-col items-center w-full">
-      <div className="w-full max-w-7xl flex justify-between items-center mb-6">
-        <h1 className="text-xl font-black text-white">Basecamp</h1>
-        <button
-          onClick={togglePrivateMode}
+    <div className="min-h-screen p-4 flex flex-col bg-base-bg text-white">
+      <header className="flex justify-between items-center mb-6">
+        <h1 className="text-xl font-bold flex items-center gap-2">
+          <Layers className="text-indigo-400" />
+          Basecamp
+        </h1>
+        <button 
+          onClick={togglePrivateMode} 
           className={`px-4 py-2 rounded-full text-[10px] font-black tracking-[0.15em] border backdrop-blur-xl ${isPrivateMode ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' : 'bg-slate-800/40 text-slate-400 border-white/10'}`}
         >
           {isPrivateMode ? 'ADMIN_SECURE' : 'GUEST_ACCESS'}
         </button>
-      </div>
+      </header>
+      <Breadcrumbs />
       {children}
     </div>
   );
@@ -134,7 +140,7 @@ const Layout = ({ children }) => {
 
 // WidgetCard: 맥북 크롬 글자 잘림 방지를 위해 lg:p-14에서 lg:p-8로 여백 다이어트
 const WidgetCard = ({ children, onClick, noPadding = false }) => (
-  <div
+  <div 
     onClick={onClick}
     style={{ background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' }}
     className={`backdrop-blur-2xl border border-white/10 rounded-[2rem] lg:rounded-[3rem] ${noPadding ? '' : 'p-5 lg:p-8 landscape:p-4 lg:landscape:p-8'} transition-all cursor-pointer flex flex-col h-full min-h-[240px] lg:min-h-[420px] landscape:min-h-[160px] lg:landscape:min-h-[420px] w-full touch-manipulation`}
@@ -145,25 +151,27 @@ const WidgetCard = ({ children, onClick, noPadding = false }) => (
 
 const Dashboard = () => {
   const { pushPage, realTimeData, isPrivateMode } = useContext(AppContext);
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-7xl">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
       {/* RegionA (좌상단) */}
-      <WidgetCard noPadding>
-        <Regiona isAdmin={isPrivateMode} data={realTimeData?.todo} />
+      <WidgetCard noPadding={true}>
+        <Regiona data={realTimeData} />
       </WidgetCard>
+
       {/* RegionB: Roadmap (우상단) */}
-      <WidgetCard noPadding>
-        <RegionB isAdmin={isPrivateMode} data={realTimeData} />
+      <WidgetCard noPadding={true}>
+        <RegionB isAdmin={isPrivateMode} />
       </WidgetCard>
+
       {/* 하단 위젯들 */}
-      <div className="flex flex-col gap-6">
-        <WidgetCard onClick={() => pushPage('storage', 'Database', Database)}>
-          <div className="flex items-center gap-2 text-white font-bold"><Database size={20}/> Database</div>
-        </WidgetCard>
-        <WidgetCard onClick={() => pushPage('network', 'Network', Server)}>
-          <div className="flex items-center gap-2 text-white font-bold"><Server size={20}/> Network</div>
-        </WidgetCard>
-      </div>
+      <WidgetCard onClick={() => pushPage('storage', 'Database', <Database />)}>
+        <h2 className="text-lg font-bold">Storage Cluster</h2>
+      </WidgetCard>
+
+      <WidgetCard onClick={() => pushPage('network', 'Network', <Server />)}>
+        <h2 className="text-lg font-bold">Edge Server</h2>
+      </WidgetCard>
     </div>
   );
 };
@@ -174,20 +182,19 @@ const AppContent = () => {
   if (currentPage.id === 'schedules-detail') {
     const isAdminAuthenticated = Array.isArray(realTimeData?.todo);
     if (!isAdminAuthenticated) {
-      return <div className="text-center text-slate-400 mt-20">접근 권한이 없습니다.</div>;
+      return <div className="p-10 text-center text-red-400">접근 권한이 없습니다.</div>;
     }
   }
 
   return (
     <Layout>
-      <Breadcrumbs />
       {currentPage.id === 'home' ? <Dashboard /> : (
-        <div className="w-full max-w-7xl">
-          <div className="flex items-center gap-3 mb-6">
-            <currentPage.icon className="text-indigo-400" size={32} />
-            <h2 className="text-2xl font-black text-white">{currentPage.title}</h2>
-          </div>
-          <div className="text-slate-500 italic">세부 화면 준비 중...</div>
+        <div className="flex-1 p-6 border border-white/10 rounded-3xl bg-white/5 backdrop-blur-md">
+          <h2 className="text-2xl font-bold flex items-center gap-3">
+            <currentPage.icon className="text-indigo-400" />
+            {currentPage.title}
+          </h2>
+          <p className="text-slate-400 mt-4">세부 콘텐츠 구현 준비 중...</p>
         </div>
       )}
     </Layout>
