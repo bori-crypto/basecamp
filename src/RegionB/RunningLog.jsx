@@ -66,8 +66,8 @@ export default function RunningLog({ isAdmin, workerUrl, adminPassword }) {
       
       const processedMonthly = (rawData.monthly || []).map(item => ({
         ...item,
-        total_distance: Number(item.total_distance) || 0,
-        avg_heart_rate: Number(item.avg_heart_rate) || 0,
+        total_distance: parseFloat(item.total_distance) || 0,
+        avg_heart_rate: parseFloat(item.avg_heart_rate) || 0,
         paceSec: paceToSeconds(item.avg_pace) 
       }));
 
@@ -125,21 +125,22 @@ export default function RunningLog({ isAdmin, workerUrl, adminPassword }) {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              {/* ✅ 장소 목록 렌더링 수정 */}
+              {/* ✅ 장소 선택 목록 렌더링 수정 [cite: 7] */}
               <select name="location" value={formData.location} onChange={handleInputChange} 
                 className="bg-black/40 border border-white/10 rounded-xl p-3 h-12 outline-none appearance-none">
                 <option value="">장소 선택</option>
                 {data.location.map((l, i) => {
-                  const val = l.location || Object.values(l)[0];
+                  const val = l.location || Object.values(l)[0]; // location 키가 없으면 첫 번째 값 사용
                   return <option key={i} value={val}>{val}</option>;
                 })}
               </select>
-              {/* ✅ 장비 목록 렌더링 수정 */}
+
+              {/* ✅ 장비 선택 목록 렌더링 수정 [cite: 6] */}
               <select name="gear" value={formData.gear} onChange={handleInputChange} 
                 className="bg-black/40 border border-white/10 rounded-xl p-3 h-12 outline-none appearance-none">
                 <option value="">장비 선택</option>
                 {data.gear.map((g, i) => {
-                  const val = g.gear || Object.values(g)[0];
+                  const val = g.gear || Object.values(g)[0]; // gear 키가 없으면 첫 번째 값 사용
                   return <option key={i} value={val}>{val}</option>;
                 })}
               </select>
