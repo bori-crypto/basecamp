@@ -111,45 +111,45 @@ export default function RunningLog({ isAdmin, workerUrl, adminPassword }) {
             <div className="grid grid-cols-2 gap-3">
               <input type="date" name="date" value={formData.date} onChange={handleInputChange} required 
                 className="bg-black/40 border border-white/10 rounded-xl p-3 text-white h-12 outline-none" />
-              <input type="number" step="0.1" inputMode="decimal" name="distance" placeholder="거리 (km)" value={formData.distance} onChange={handleInputChange} required 
+              <input type="number" step="0.1" name="distance" placeholder="거리 (km)" value={formData.distance} onChange={handleInputChange} required 
                 className="bg-black/40 border border-white/10 rounded-xl p-3 text-white h-12 outline-none" />
             </div>
 
             <div className="grid grid-cols-3 gap-3">
               <input type="text" name="time" placeholder="00:00:00" value={formData.time} onChange={handleInputChange} required 
                 className="bg-black/40 border border-white/10 rounded-xl p-3 text-white h-12 outline-none" />
-              <input type="number" inputMode="numeric" name="heart_rate" placeholder="심박" value={formData.heart_rate} onChange={handleInputChange}
+              <input type="number" name="heart_rate" placeholder="심박" value={formData.heart_rate} onChange={handleInputChange}
                 className="bg-black/40 border border-white/10 rounded-xl p-3 text-white h-12 outline-none" />
-              <input type="number" inputMode="numeric" name="cadence" placeholder="케이던스" value={formData.cadence} onChange={handleInputChange}
+              <input type="number" name="cadence" placeholder="케이던스" value={formData.cadence} onChange={handleInputChange}
                 className="bg-black/40 border border-white/10 rounded-xl p-3 text-white h-12 outline-none" />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              {/* ✅ 장소 선택 목록 렌더링 수정 [cite: 7] */}
+              {/* ✅ 정밀 타격: 장소 목록 출력 로직 수리 */}
               <select name="location" value={formData.location} onChange={handleInputChange} 
                 className="bg-black/40 border border-white/10 rounded-xl p-3 h-12 outline-none appearance-none">
                 <option value="">장소 선택</option>
                 {data.location.map((l, i) => {
-                  const val = l.location || Object.values(l)[0]; // location 키가 없으면 첫 번째 값 사용
+                  const val = l.location || Object.values(l)[0];
                   return <option key={i} value={val}>{val}</option>;
                 })}
               </select>
 
-              {/* ✅ 장비 선택 목록 렌더링 수정 [cite: 6] */}
+              {/* ✅ 정밀 타격: 장비 목록 출력 로직 수리 */}
               <select name="gear" value={formData.gear} onChange={handleInputChange} 
                 className="bg-black/40 border border-white/10 rounded-xl p-3 h-12 outline-none appearance-none">
                 <option value="">장비 선택</option>
                 {data.gear.map((g, i) => {
-                  const val = g.gear || Object.values(g)[0]; // gear 키가 없으면 첫 번째 값 사용
+                  const val = g.gear || Object.values(g)[0];
                   return <option key={i} value={val}>{val}</option>;
                 })}
               </select>
             </div>
 
-            <input type="text" name="memo" placeholder="메모 (컨디션 등)" value={formData.memo} onChange={handleInputChange}
+            <input type="text" name="memo" placeholder="메모" value={formData.memo} onChange={handleInputChange}
               className="bg-black/40 border border-white/10 rounded-xl p-3 text-white h-12 outline-none" />
 
-            <button type="submit" className="bg-blue-600 active:scale-95 transition-all py-4 rounded-xl font-bold shadow-lg mt-2">
+            <button type="submit" className="bg-blue-600 active:scale-95 transition-all py-4 rounded-xl font-bold shadow-lg mt-2 text-white">
               기록 저장하기
             </button>
           </form>
@@ -160,7 +160,7 @@ export default function RunningLog({ isAdmin, workerUrl, adminPassword }) {
         <div className="text-center py-20 animate-pulse text-gray-500 text-xs">Synchronizing...</div>
       ) : (
         <div className="bg-white/10 backdrop-blur-md border border-white/20 p-5 rounded-2xl shadow-lg">
-          <h3 className="text-lg font-bold mb-6 flex items-center gap-2">📈 통계</h3>
+          <h3 className="text-lg font-bold mb-6 flex items-center gap-2 font-['Inter']">📈 통계</h3>
           <div className="h-[280px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={data.monthly} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
