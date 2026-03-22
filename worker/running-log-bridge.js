@@ -1,6 +1,6 @@
 /**
  * Running Log Bridge Worker (AI Vision Edition)
- * 기능: React 앱과 GAS 연결 및 Gemini Vision을 통한 사진 분석
+ * 기능: React 앱과 GAS 연결 및 Gemini Vision을 통한 사진 분석 (심박수 추가 및 맵핑 보강)
  */
 
 export default {
@@ -37,7 +37,7 @@ export default {
       }
     }
 
-    // 3. POST: 기능 분기 (기록 저장 vs 사진 분석)
+    // 3. POST: 기능 분기
     if (request.method === "POST") {
       if (!isAdmin) {
         return new Response(JSON.stringify({ error: "권한이 없습니다." }), {
@@ -45,19 +45,25 @@ export default {
         });
       }
 
-      // ✅ [신규] 사진 분석 요청 처리 (/analyze-image)
+      // ✅ 사진 분석 요청 처리 (/analyze-image)
       if (url.pathname.endsWith("/analyze-image")) {
         try {
-          const { image } = await request.json(); // base64 이미지 데이터
+          const { image } = await request.json();
           
           const genAI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`;
           
+          // ✅ 프롬프트 수정: heart_rate 추가 및 문자열 형식 강제
           const prompt = `
             Extract running data from this screenshot. 
             Return ONLY a JSON object with these keys: 
-            "date" (YYYY-MM-DD), "distance" (number), "time" (HH:MM:SS), "pace" (MM:SS), "cadence" (number).
-            If a value is not found, use null. 
-            Do not include any other text or markdown formatting.
+            "date" (YYYY-MM-DD), 
+            "distance" (String like "7.42"), 
+            "time" (String like "00:50:25"), 
+            "pace" (String like "06:48"), 
+            "heart_rate" (String like "171"),
+            "cadence" (String like "171").
+            
+            IMPORTANT: Return only raw JSON. No markdown blocks, no extra text.
           `;
 
           const response = await fetch(genAI_URL, {
@@ -74,10 +80,14 @@ export default {
           });
 
           const result = await response.json();
+          if (!result.candidates || !result.candidates[0]) {
+            throw new Error("AI 대답 생성 실패");
+          }
+
           const textResponse = result.candidates[0].content.parts[0].text;
           
-          // JSON 외의 불필요한 마크업(```json 등) 제거 후 파싱
-          const cleanedJson = textResponse.replace(/```json|```/g, "").trim();
+          // JSON 외의 불필요한 마크업(```json 등) 제거 정규식 보강
+          const cleanedJson = textResponse.replace(/```json|```|[\u200B-\u200D\uFEFF]/g, "").trim();
           
           return new Response(cleanedJson, {
             headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
