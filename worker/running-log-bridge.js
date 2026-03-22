@@ -1,6 +1,6 @@
 /**
- * Running Log Bridge Worker
- * 기능: React 앱과 Google Apps Script(GAS) 간의 보안 통로 역할
+ * Running Log Bridge Worker (AI Vision Edition)
+ * 기능: React 앱과 GAS 연결 및 Gemini Vision을 통한 사진 분석
  */
 
 export default {
@@ -19,39 +19,78 @@ export default {
       });
     }
 
-    // 2. 관리자 권한 체크 (POST 요청 시 필수)
     const adminPassword = request.headers.get("X-Admin-Password");
-    const isAdmin = adminPassword === env.ADMIN_SECURE; // wrangler.toml이나 대시보드에서 설정
+    const isAdmin = adminPassword === env.ADMIN_SECURE;
 
-    // 3. GET: 러닝 데이터 조회 (모든 시트 데이터 가져오기)
+    // 2. GET: 데이터 조회
     if (request.method === "GET") {
       try {
         const response = await fetch(GAS_URL);
         const data = await response.json();
-
         return new Response(JSON.stringify(data), {
-          headers: {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-          },
+          headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
         });
       } catch (error) {
-        return new Response(JSON.stringify({ error: "GAS 연결 실패" }), { 
-          status: 500,
-          headers: { "Access-Control-Allow-Origin": "*" }
+        return new Response(JSON.stringify({ error: "GAS 연결 실패" }), {
+          status: 500, headers: { "Access-Control-Allow-Origin": "*" }
         });
       }
     }
 
-    // 4. POST: 새로운 러닝 기록 추가 (관리자 전용)
+    // 3. POST: 기능 분기 (기록 저장 vs 사진 분석)
     if (request.method === "POST") {
       if (!isAdmin) {
         return new Response(JSON.stringify({ error: "권한이 없습니다." }), {
-          status: 403,
-          headers: { "Access-Control-Allow-Origin": "*" }
+          status: 403, headers: { "Access-Control-Allow-Origin": "*" }
         });
       }
 
+      // ✅ [신규] 사진 분석 요청 처리 (/analyze-image)
+      if (url.pathname.endsWith("/analyze-image")) {
+        try {
+          const { image } = await request.json(); // base64 이미지 데이터
+          
+          const genAI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`;
+          
+          const prompt = `
+            Extract running data from this screenshot. 
+            Return ONLY a JSON object with these keys: 
+            "date" (YYYY-MM-DD), "distance" (number), "time" (HH:MM:SS), "pace" (MM:SS), "cadence" (number).
+            If a value is not found, use null. 
+            Do not include any other text or markdown formatting.
+          `;
+
+          const response = await fetch(genAI_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{
+                parts: [
+                  { text: prompt },
+                  { inline_data: { mime_type: "image/jpeg", data: image } }
+                ]
+              }]
+            })
+          });
+
+          const result = await response.json();
+          const textResponse = result.candidates[0].content.parts[0].text;
+          
+          // JSON 외의 불필요한 마크업(```json 등) 제거 후 파싱
+          const cleanedJson = textResponse.replace(/```json|```/g, "").trim();
+          
+          return new Response(cleanedJson, {
+            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+          });
+
+        } catch (error) {
+          return new Response(JSON.stringify({ error: "AI 분석 실패", detail: error.message }), {
+            status: 500, headers: { "Access-Control-Allow-Origin": "*" }
+          });
+        }
+      }
+
+      // 기존: 기록 저장 요청 처리 (GAS로 전달)
       try {
         const body = await request.json();
         const response = await fetch(GAS_URL, {
@@ -59,21 +98,16 @@ export default {
           body: JSON.stringify(body),
         });
         const result = await response.json();
-
         return new Response(JSON.stringify(result), {
-          headers: {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-          },
+          headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
         });
       } catch (error) {
-        return new Response(JSON.stringify({ error: "기록 저장 실패" }), { 
-          status: 500,
-          headers: { "Access-Control-Allow-Origin": "*" }
+        return new Response(JSON.stringify({ error: "저장 실패" }), {
+          status: 500, headers: { "Access-Control-Allow-Origin": "*" }
         });
       }
     }
 
-    return new Response("Method Not Allowed", { status: 405 });
-  },
+    return new Response("Not Found", { status: 404 });
+  }
 };
