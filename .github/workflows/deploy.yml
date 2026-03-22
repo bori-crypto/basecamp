@@ -1,4 +1,4 @@
-name: Deploy Image Gatekeeper (Worker Only)
+name: Deploy Basecamp Workers
 
 on:
   push:
@@ -6,16 +6,22 @@ on:
       - main
 
 jobs:
-  deploy-worker:
+  deploy-workers:
     runs-on: ubuntu-latest
     env:
-      # Node.js 24 강제 활성화로 경고 메시지 방지
+      # 💡 깃허브 권장사항: Node.js 24 활성화
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Deploy to Cloudflare
+      # 1. 이미지 게이트키퍼 배포 (기존 wrangler.toml 사용)
+      - name: Deploy Image Gatekeeper
         run: npx wrangler deploy
+
+      # 2. 러닝 로그 브릿지 배포 (새로운 wrangler.run.toml 사용)
+      - name: Deploy Running Log Bridge
+        run: npx wrangler deploy --config wrangler.run.toml
