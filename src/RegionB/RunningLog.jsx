@@ -4,14 +4,17 @@ import {
   Tooltip as RechartsTooltip, Legend
 } from 'recharts';
 
-// --- 헬퍼 함수 ---
+// --- 헬퍼 함수: 페이스(MM:SS)를 초 단위로 변환 ---
 const paceToSeconds = (paceStr) => {
-  if (!paceStr || typeof paceStr !== 'string') return 0;
-  const parts = paceStr.split(':');
-  if (parts.length !== 2) return 0;
-  return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+  if (!paceStr) return 0;
+  const str = String(paceStr);
+  const parts = str.split(':').map(Number);
+  if (parts.length === 2) return parts[0] * 60 + parts[1]; // MM:SS 
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2]; // HH:MM:SS
+  return 0;
 };
 
+// --- 초 단위를 다시 페이스(MM:SS)로 변환 ---
 const formatPace = (seconds) => {
   if (!seconds) return "00:00";
   const m = Math.floor(seconds / 60);
@@ -61,9 +64,11 @@ export default function RunningLog({ isAdmin, workerUrl, adminPassword }) {
       const res = await fetch(`${workerUrl}`, { method: 'GET' });
       const rawData = await res.json();
       
-      // ✅ 도면의 'avg_pace'를 paceSec으로 변환하여 차트에 매핑
+      // ✅ 도면의 필드 명칭을 숫자로 강제 변환하여 매핑 (Y축 복구 핵심) 
       const processedMonthly = (rawData.monthly || []).map(item => ({
         ...item,
+        total_distance: parseFloat(item.total_distance) || 0, 
+        avg_heart_rate: parseFloat(item.avg_heart_rate) || 0,
         paceSec: paceToSeconds(item.avg_pace) 
       }));
 
@@ -122,13 +127,13 @@ export default function RunningLog({ isAdmin, workerUrl, adminPassword }) {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              {/* ✅ 도면 헤더 'location' 매핑 */}
+              {/* ✅ 도면 헤더 'location' 매핑 및 <option> 태그 추가 [cite: 7] */}
               <select name="location" value={formData.location} onChange={handleInputChange} 
                 className="bg-black/40 border border-white/10 rounded-xl p-3 h-12 outline-none appearance-none">
                 <option value="">장소 선택</option>
                 {data.location.map((l, i) => <option key={i} value={l.location}>{l.location}</option>)}
               </select>
-              {/* ✅ 도면 헤더 'gear' 매핑 */}
+              {/* ✅ 도면 헤더 'gear' 매핑 및 <option> 태그 추가 [cite: 6] */}
               <select name="gear" value={formData.gear} onChange={handleInputChange} 
                 className="bg-black/40 border border-white/10 rounded-xl p-3 h-12 outline-none appearance-none">
                 <option value="">장비 선택</option>
@@ -136,7 +141,6 @@ export default function RunningLog({ isAdmin, workerUrl, adminPassword }) {
               </select>
             </div>
 
-            {/* ✅ 메모 칸 복구 */}
             <input type="text" name="memo" placeholder="메모 (컨디션 등)" value={formData.memo} onChange={handleInputChange}
               className="bg-black/40 border border-white/10 rounded-xl p-3 text-white h-12 outline-none" />
 
@@ -149,7 +153,7 @@ export default function RunningLog({ isAdmin, workerUrl, adminPassword }) {
 
       {/* 📈 통계 섹션 */}
       {loading ? (
-        <div className="text-center py-20 animate-pulse text-gray-500 text-xs">Synchronizing...</div>
+        <div className="text-center py-20 animate-pulse text-gray-500 text-xs tracking-widest uppercase">Synchronizing...</div>
       ) : (
         <div className="bg-white/10 backdrop-blur-md border border-white/20 p-5 rounded-2xl shadow-lg">
           <h3 className="text-lg font-bold mb-6 flex items-center gap-2">📈 통계</h3>
@@ -159,7 +163,7 @@ export default function RunningLog({ isAdmin, workerUrl, adminPassword }) {
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                 <XAxis dataKey="month" stroke="#64748b" fontSize={10} tickMargin={10} />
                 
-                {/* 좌측 Y축: 거리와 심박수 기준 */}
+                {/* 좌측 Y축: 거리/심박 숫자 표시 복구 */}
                 <YAxis yAxisId="left" stroke="#64748b" fontSize={10} />
                 
                 {/* 우측 Y축: 페이스 기준 (역순) */}
@@ -168,7 +172,7 @@ export default function RunningLog({ isAdmin, workerUrl, adminPassword }) {
                 <RechartsTooltip content={<CustomTooltip />} />
                 <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '20px' }} />
                 
-                {/* ✅ 도면 헤더 'total_distance', 'avg_heart_rate' 매핑 (Y축 숫자 복구 핵심) */}
+                {/* ✅ 도면 이름표 'total_distance', 'avg_heart_rate'를 차트 이름 '거리', '심박'으로 연결  */}
                 <Bar yAxisId="left" dataKey="total_distance" name="거리" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={18} />
                 <Line yAxisId="left" type="monotone" dataKey="avg_heart_rate" name="심박" stroke="#ef4444" strokeWidth={2} dot={{ r: 3, fill: '#ef4444' }} />
                 <Line yAxisId="right" type="monotone" dataKey="paceSec" name="페이스" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981' }} />
