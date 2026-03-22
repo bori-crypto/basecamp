@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext } from 'react'; // ✅ useContext 추가
 import { 
   Camera, 
   Bike, 
@@ -14,10 +14,10 @@ import {
 
 // 상세 페이지 및 컨텍스트 임포트
 import MemoryArchive from './RegionB/MemoryArchive';
-import RunningLog from './RegionB/RunningLog';
-import GearManagement from './RegionB/GearManagement'; 
-import { AppContext } from './App';
+import RunningLog from './RegionB/RunningLog'; // ✅ 러닝 로그 컴포넌트 추가
+import { AppContext } from './App'; // ✅ 서버 주소 및 암호 가져오기용
 
+// R2 사진 보안 컴포넌트 (기본 로직 유지)
 const SecureImage = ({ src, alt, className }) => {
   const [imgUrl, setImgUrl] = useState(null);
   const imagePass = import.meta.env.VITE_IMAGE_PASS;
@@ -45,12 +45,15 @@ const SecureImage = ({ src, alt, className }) => {
 };
 
 const RegionB = ({ isAdmin, data }) => {
+  // step: 0(유니버스), 1(궤도 진입), 2(탐사 시작)
   const [step, setStep] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [path, setPath] = useState([]);
 
+  // ✅ App.jsx에서 관리 중인 러닝 워커 주소와 관리자 암호 가져오기
   const { RUNNING_WORKER_URL, adminPassword } = useContext(AppContext);
 
+  // 7개 아이콘 데이터 (오빠의 원본 규격 32px 완벽 유지)
   const menuData = {
     photos: {
       label: '나의 기록',
@@ -145,6 +148,8 @@ const RegionB = ({ isAdmin, data }) => {
 
   return (
     <div className="w-full h-full p-4 flex flex-col bg-transparent text-slate-200 relative overflow-hidden">
+      
+      {/* 상단 네비게이션 */}
       <div className="flex items-center gap-3 mb-8 relative z-10 min-h-[40px]">
         {step > 0 && (
           <>
@@ -180,8 +185,10 @@ const RegionB = ({ isAdmin, data }) => {
         )}
       </div>
 
+      {/* 메인 콘텐츠 구역 */}
       <div className="flex-1 relative z-10 overflow-y-auto scrollbar-hide">
         {step === 0 ? (
+          /* 1단계: 유니버스 메인 (오빠의 원본 4열 그리드 레이아웃 보존) */
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 animate-in zoom-in-95 duration-300">
             {Object.keys(menuData).map((key) => (
               <div key={key} className="group flex flex-col items-center justify-center p-3">
@@ -201,6 +208,7 @@ const RegionB = ({ isAdmin, data }) => {
             ))}
           </div>
         ) : step === 1 ? (
+          /* 2단계: 서브 메뉴 카드 */
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 animate-in slide-in-from-bottom-5 duration-500">
             {menuData[selectedCategory].sub.map((subItem, idx) => (
               <div 
@@ -218,6 +226,7 @@ const RegionB = ({ isAdmin, data }) => {
             ))}
           </div>
         ) : (
+          /* 3단계: 상세 탐사 (분기 렌더링) */
           <div className="animate-in zoom-in-95 duration-300 h-full">
             {selectedCategory === 'photos' ? (
               <MemoryArchive 
@@ -225,18 +234,14 @@ const RegionB = ({ isAdmin, data }) => {
                 isAdmin={isAdmin} 
               />
             ) : selectedCategory === 'running' && path[1] === '러닝 로그' ? (
+              /* ✅ 러닝 로그 클릭 시에만 대시보드 연결 */
               <RunningLog 
                 isAdmin={isAdmin} 
                 workerUrl={RUNNING_WORKER_URL} 
                 adminPassword={adminPassword} 
               />
-            ) : selectedCategory === 'running' && path[1] === '장비 관리' ? (
-              <GearManagement 
-                isAdmin={isAdmin} 
-                workerUrl={RUNNING_WORKER_URL} 
-                adminPassword={adminPassword} 
-              />
             ) : (
+              /* 그 외 기본 리스트 뷰 */
               <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 h-full">
                 <div className="flex items-center gap-3 mb-4 border-b border-white/5 pb-4">
                   <div className={`p-2 rounded-xl bg-gradient-to-br ${menuData[selectedCategory].color} text-white`}>
@@ -253,7 +258,6 @@ const RegionB = ({ isAdmin, data }) => {
                       <div className="flex items-center gap-3">
                         <Sparkles size={12} className="text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                         <span className="text-xs text-slate-300 group-hover:text-white transition-colors">{item}</span>
-                        {item === '신발 마일리지' && <Sparkles size={14} className="text-amber-400 animate-pulse" />}
                       </div>
                       <ChevronRight size={14} className="text-slate-600 group-hover:text-indigo-400 transition-colors" />
                     </div>
