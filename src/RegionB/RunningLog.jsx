@@ -1,25 +1,59 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  ResponsiveContainer, ComposedChart, Line, Bar, XAxis, YAxis, 
-  Tooltip as RechartsTooltip, Legend 
+import {
+  ResponsiveContainer, ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip as RechartsTooltip, Legend
 } from 'recharts';
-import { Activity, Zap, MapPin, CheckCircle2 } from 'lucide-react';
+
+// --- 헬퍼 함수: 페이스(MM:SS)를 초 단위로 변환 ---
+const paceToSeconds = (paceStr) => {
+  if (!paceStr) return 0;
+  const str = String(paceStr);
+  const parts = str.split(':').map(Number);
+  if (parts.length === 2) return parts[0] * 60 + parts[1]; // MM:SS
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2]; // HH:MM:SS
+  return 0;
+};
+
+// --- 초 단위를 다시 페이스(MM:SS)로 변환 ---
+const formatPace = (seconds) => {
+  if (!seconds) return "00:00";
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+};
+
+// --- 커스텀 툴팁 ---
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-black/80 backdrop-blur-md border border-white/20 p-3 rounded-lg text-white text-xs shadow-xl z-50">
+        <p className="font-bold mb-2 border-b border-white/30 pb-1">{label}</p>
+        {payload.map((entry, index) => {
+          const value = entry.dataKey === 'paceSec' ? formatPace(entry.value) : entry.value;
+          let unit = '';
+          if (entry.dataKey === 'total_distance') unit = 'km';
+          if (entry.dataKey === 'avg_heart_rate') unit = 'bpm';
+          return (
+            <div key={index} className="flex items-center gap-2 my-1">
+              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.color }}></span>
+              <span className="text-gray-400">{entry.name}:</span>
+              <span className="font-semibold">{value} {unit}</span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+  return null;
+};
 
 export default function RunningLog({ isAdmin, workerUrl, adminPassword }) {
   const [data, setData] = useState({ monthly: [], gear: [], location: [] });
   const [loading, setLoading] = useState(true);
 
-  // 수동 입력 폼 상태
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
-    distance: '',
-    time: '',
-    pace: '',
-    heart_rate: '',
-    cadence: '',
-    location: '',
-    gear: '',
-    memo: ''
+    distance: '', time: '', heart_rate: '', cadence: '', location: '', gear: '', memo: ''
   });
 
   useEffect(() => { if (workerUrl) fetchData(); }, [workerUrl]);
@@ -27,24 +61,24 @@ export default function RunningLog({ isAdmin, workerUrl, adminPassword }) {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${workerUrl}`);
+      const res = await fetch(`${workerUrl}`, { method: 'GET' });
       const rawData = await res.json();
       
-      // 블루프린트 구조(Monthly_Stats, Gear_Status, Location_Stats)에 맞게 정밀 매핑
-      setData({
-        monthly: (rawData.Monthly_Stats || []).map(d => ({
-          month: d.month,
-          dist: parseFloat(d.total_distance) || 0,
-          hr: parseInt(d.avg_heart_rate) || 0
-        })),
-        gear: rawData.Gear_Status || [],
-        location: rawData.Location_Stats || []
+      const processedMonthly = (rawData.monthly || []).map(item => ({
+        ...item,
+        total_distance: parseFloat(item.total_distance) || 0,
+        avg_heart_rate: parseFloat(item.avg_heart_rate) || 0,
+        paceSec: paceToSeconds(item.avg_pace) 
+      }));
+
+      setData({ 
+        monthly: processedMonthly, 
+        gear: rawData.gear || [], 
+        location: rawData.location || [] 
       });
-    } catch (e) { 
-      console.error("데이터 로드 실패:", e); 
-    } finally { 
-      setLoading(false); 
-    }
+    } catch (error) {
+      console.error("Data load failed:", error);
+    } finally { setLoading(false); }
   };
 
   const handleInputChange = (e) => {
@@ -53,7 +87,6 @@ export default function RunningLog({ isAdmin, workerUrl, adminPassword }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!isAdmin) return;
     try {
       const res = await fetch(`${workerUrl}`, {
         method: 'POST',
@@ -64,91 +97,87 @@ export default function RunningLog({ isAdmin, workerUrl, adminPassword }) {
         alert('기록 성공! 🏃‍♂️');
         fetchData();
         setFormData({ ...formData, distance: '', time: '', heart_rate: '', cadence: '', memo: '' });
-      }
-    } catch (e) { alert('저장 실패!'); }
+      } else { alert('저장 실패!'); }
+    } catch (error) { alert('네트워크 오류!'); }
   };
 
   return (
-    <div className="flex flex-col gap-6 w-full animate-in fade-in duration-500 pb-10">
+    <div className="flex flex-col gap-6 w-full text-white pb-10">
       
-      {/* 1. 수동 입력 폼 (관리자 전용) */}
       {isAdmin && (
-        <form onSubmit={handleSubmit} className="bg-white/5 backdrop-blur-md border border-white/10 p-6 rounded-[2rem] shadow-xl flex flex-col gap-4">
-          <div className="flex items-center gap-2 mb-2 text-indigo-400">
-            <CheckCircle2 size={18} />
-            <h3 className="text-xs font-black uppercase tracking-widest">Manual Entry</h3>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <input type="date" name="date" value={formData.date} onChange={handleInputChange} className="bg-white/5 border border-white/10 rounded-xl p-2.5 text-xs text-white outline-none" />
-            <input type="number" step="0.01" name="distance" placeholder="Distance(km)" value={formData.distance} onChange={handleInputChange} className="bg-white/5 border border-white/10 rounded-xl p-2.5 text-xs text-white outline-none" />
-            <input type="text" name="time" placeholder="Time(HH:MM:SS)" value={formData.time} onChange={handleInputChange} className="bg-white/5 border border-white/10 rounded-xl p-2.5 text-xs text-white outline-none" />
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <select name="location" value={formData.location} onChange={handleInputChange} className="bg-slate-900 border border-white/10 rounded-xl p-2.5 text-xs text-white outline-none">
-              <option value="">장소 선택</option>
-              {data.location.map((l, i) => <option key={i} value={l.location}>{l.location}</option>)}
-            </select>
-            <select name="gear" value={formData.gear} onChange={handleInputChange} className="bg-slate-900 border border-white/10 rounded-xl p-2.5 text-xs text-white outline-none">
-              <option value="">신발 선택</option>
-              {data.gear.map((g, i) => <option key={i} value={g.gear}>{g.gear}</option>)}
-            </select>
-            <input type="number" name="heart_rate" placeholder="HR" value={formData.heart_rate} onChange={handleInputChange} className="bg-white/5 border border-white/10 rounded-xl p-2.5 text-xs text-white outline-none" />
-            <input type="number" name="cadence" placeholder="Cadence" value={formData.cadence} onChange={handleInputChange} className="bg-white/5 border border-white/10 rounded-xl p-2.5 text-xs text-white outline-none" />
-          </div>
-          <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-black text-xs uppercase tracking-[0.2em] transition-all">SAVE LOG</button>
-        </form>
+        <div className="bg-white/10 backdrop-blur-md border border-white/20 p-5 rounded-2xl shadow-lg">
+          <h2 className="text-lg font-bold mb-4 flex items-center gap-2">⚡ 새 러닝 기록 입력</h2>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+            <div className="grid grid-cols-2 gap-3">
+              <input type="date" name="date" value={formData.date} onChange={handleInputChange} required 
+                className="bg-black/40 border border-white/10 rounded-xl p-3 text-white h-12 outline-none" />
+              <input type="number" step="0.1" inputMode="decimal" name="distance" placeholder="거리 (km)" value={formData.distance} onChange={handleInputChange} required 
+                className="bg-black/40 border border-white/10 rounded-xl p-3 text-white h-12 outline-none" />
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <input type="text" name="time" placeholder="00:00:00" value={formData.time} onChange={handleInputChange} required 
+                className="bg-black/40 border border-white/10 rounded-xl p-3 text-white h-12 outline-none" />
+              <input type="number" inputMode="numeric" name="heart_rate" placeholder="심박" value={formData.heart_rate} onChange={handleInputChange}
+                className="bg-black/40 border border-white/10 rounded-xl p-3 text-white h-12 outline-none" />
+              <input type="number" inputMode="numeric" name="cadence" placeholder="케이던스" value={formData.cadence} onChange={handleInputChange}
+                className="bg-black/40 border border-white/10 rounded-xl p-3 text-white h-12 outline-none" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              {/* ✅ 장소 선택 목록 렌더링 수정 [cite: 7] */}
+              <select name="location" value={formData.location} onChange={handleInputChange} 
+                className="bg-black/40 border border-white/10 rounded-xl p-3 h-12 outline-none appearance-none">
+                <option value="">장소 선택</option>
+                {data.location.map((l, i) => {
+                  const val = l.location || Object.values(l)[0]; // location 키가 없으면 첫 번째 값 사용
+                  return <option key={i} value={val}>{val}</option>;
+                })}
+              </select>
+
+              {/* ✅ 장비 선택 목록 렌더링 수정 [cite: 6] */}
+              <select name="gear" value={formData.gear} onChange={handleInputChange} 
+                className="bg-black/40 border border-white/10 rounded-xl p-3 h-12 outline-none appearance-none">
+                <option value="">장비 선택</option>
+                {data.gear.map((g, i) => {
+                  const val = g.gear || Object.values(g)[0]; // gear 키가 없으면 첫 번째 값 사용
+                  return <option key={i} value={val}>{val}</option>;
+                })}
+              </select>
+            </div>
+
+            <input type="text" name="memo" placeholder="메모 (컨디션 등)" value={formData.memo} onChange={handleInputChange}
+              className="bg-black/40 border border-white/10 rounded-xl p-3 text-white h-12 outline-none" />
+
+            <button type="submit" className="bg-blue-600 active:scale-95 transition-all py-4 rounded-xl font-bold shadow-lg mt-2">
+              기록 저장하기
+            </button>
+          </form>
+        </div>
       )}
 
-      {/* 2. 월별 성장 지표 (차트) */}
-      <div className="bg-white/5 border border-white/10 rounded-[2rem] p-6 shadow-xl">
-        <div className="flex items-center gap-2 mb-6 text-indigo-400 font-black text-xs uppercase tracking-widest">
-          <Activity size={16} /> Monthly Growth
-        </div>
-        <div className="h-64 w-full">
-          {!loading && (
+      {loading ? (
+        <div className="text-center py-20 animate-pulse text-gray-500 text-xs">Synchronizing...</div>
+      ) : (
+        <div className="bg-white/10 backdrop-blur-md border border-white/20 p-5 rounded-2xl shadow-lg">
+          <h3 className="text-lg font-bold mb-6 flex items-center gap-2">📈 통계</h3>
+          <div className="h-[280px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={data.monthly}>
-                <XAxis dataKey="month" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
-                <RechartsTooltip contentStyle={{ background: '#0f172a', border: 'none', borderRadius: '12px', fontSize: '10px' }} />
-                <Bar dataKey="dist" name="거리(km)" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={20} />
-                <Line type="monotone" dataKey="hr" name="심박" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} />
+              <ComposedChart data={data.monthly} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                <XAxis dataKey="month" stroke="#64748b" fontSize={10} tickMargin={10} />
+                <YAxis yAxisId="left" stroke="#64748b" fontSize={10} />
+                <YAxis yAxisId="right" orientation="right" reversed stroke="#64748b" fontSize={10} tickFormatter={formatPace} />
+                <RechartsTooltip content={<CustomTooltip />} />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '20px' }} />
+                <Bar yAxisId="left" dataKey="total_distance" name="거리" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={18} />
+                <Line yAxisId="left" type="monotone" dataKey="avg_heart_rate" name="심박" stroke="#ef4444" strokeWidth={2} dot={{ r: 3, fill: '#ef4444' }} />
+                <Line yAxisId="right" type="monotone" dataKey="paceSec" name="페이스" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981' }} />
               </ComposedChart>
             </ResponsiveContainer>
-          )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* 3. 장비 상태 */}
-        <div className="bg-white/5 border border-white/10 rounded-[2rem] p-6 shadow-xl">
-          <div className="flex items-center gap-2 mb-4 text-amber-400 font-black text-xs uppercase tracking-widest">
-            <Zap size={16} /> Gear Status
-          </div>
-          <div className="space-y-3">
-            {data.gear.map((g, i) => (
-              <div key={i} className="flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/5">
-                <span className="text-xs font-bold text-slate-200">{g.gear}</span>
-                <span className="text-[10px] font-black text-indigo-400">{parseFloat(g.total_km || 0).toFixed(1)} km</span>
-              </div>
-            ))}
           </div>
         </div>
-
-        {/* 4. 코스 점유율 */}
-        <div className="bg-white/5 border border-white/10 rounded-[2rem] p-6 shadow-xl">
-          <div className="flex items-center gap-2 mb-4 text-emerald-400 font-black text-xs uppercase tracking-widest">
-            <MapPin size={16} /> Location Stats
-          </div>
-          <div className="space-y-3">
-            {data.location.map((l, i) => (
-              <div key={i} className="flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/5">
-                <span className="text-xs font-bold text-slate-200">{l.location}</span>
-                <span className="text-[10px] font-black text-emerald-400">{l.total_run} Runs</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
