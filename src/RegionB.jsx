@@ -1,23 +1,22 @@
-import React, { useState, useEffect, useContext } from 'react'; // ✅ useContext 추가
-import { 
-  Camera, 
-  Bike, 
-  Footprints, 
-  Fuel, 
-  Mountain, 
-  Waves, 
+import React, { useState, useEffect, useContext } from 'react';
+import {
+  Camera,
+  Bike,
+  Footprints,
+  Fuel,
+  Mountain,
+  Waves,
   Dumbbell,
-  ChevronLeft, 
-  ChevronRight, 
+  ChevronLeft,
+  ChevronRight,
   Sparkles
 } from 'lucide-react';
 
 // 상세 페이지 및 컨텍스트 임포트
 import MemoryArchive from './RegionB/MemoryArchive';
-import RunningLog from './RegionB/RunningLog'; // ✅ 러닝 로그 컴포넌트 추가
-import { AppContext } from './App'; // ✅ 서버 주소 및 암호 가져오기용
+import RunningLog from './RegionB/RunningLog';
+import { AppContext } from './App';
 
-// R2 사진 보안 컴포넌트 (기본 로직 유지)
 const SecureImage = ({ src, alt, className }) => {
   const [imgUrl, setImgUrl] = useState(null);
   const imagePass = import.meta.env.VITE_IMAGE_PASS;
@@ -45,19 +44,17 @@ const SecureImage = ({ src, alt, className }) => {
 };
 
 const RegionB = ({ isAdmin, data }) => {
-  // step: 0(유니버스), 1(궤도 진입), 2(탐사 시작)
   const [step, setStep] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [path, setPath] = useState([]);
 
-  // ✅ App.jsx에서 관리 중인 러닝 워커 주소와 관리자 암호 가져오기
+  // ✅ App.jsx의 컨텍스트에서 오리지널 배관(RUNNING_WORKER_URL)을 가져옴
   const { RUNNING_WORKER_URL, adminPassword } = useContext(AppContext);
 
-  // 7개 아이콘 데이터 (오빠의 원본 규격 32px 완벽 유지)
   const menuData = {
     photos: {
       label: '나의 기록',
-      icon: <Camera size={32} />, 
+      icon: <Camera size={32} />,
       color: 'from-blue-500 to-cyan-400',
       sub: [
         { label: '2026', data: ["IMG_5985.JPG", "첫 기록 메모"] },
@@ -66,7 +63,7 @@ const RegionB = ({ isAdmin, data }) => {
     },
     travel: {
       label: 'Bike Travel',
-      icon: <Bike size={32} />, 
+      icon: <Bike size={32} />,
       color: 'from-indigo-500 to-purple-400',
       sub: [
         { label: '유라시아 2030', detail: ['루트 설계', '비자 확인', '체크리스트'] },
@@ -148,31 +145,27 @@ const RegionB = ({ isAdmin, data }) => {
 
   return (
     <div className="w-full h-full p-4 flex flex-col bg-transparent text-slate-200 relative overflow-hidden">
-      
-      {/* 상단 네비게이션 */}
       <div className="flex items-center gap-3 mb-8 relative z-10 min-h-[40px]">
         {step > 0 && (
           <>
-            <button 
-              onClick={goBack} 
+            <button
+              onClick={goBack}
               className="group flex items-center gap-2 bg-white/5 backdrop-blur-md px-3 py-1.5 rounded-xl hover:bg-white/10 transition-all text-xs font-medium border border-white/10"
             >
-              <ChevronLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" /> 
+              <ChevronLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
               뒤로가기
             </button>
-            
             <div className="flex items-center gap-2 ml-2 text-[11px] font-medium text-slate-500">
-              <button 
+              <button
                 onClick={() => jumpToStep(0)}
                 className="hover:text-indigo-400 transition-colors uppercase tracking-wider"
               >
                 유니버스
               </button>
-
               {path.map((p, i) => (
                 <React.Fragment key={i}>
                   <ChevronRight size={12} className="opacity-40" />
-                  <button 
+                  <button
                     onClick={() => i === 0 && jumpToStep(1)}
                     className={`transition-colors whitespace-pre ${i === path.length - 1 ? "text-slate-100 font-bold cursor-default" : "hover:text-slate-300 cursor-pointer"}`}
                   >
@@ -185,19 +178,16 @@ const RegionB = ({ isAdmin, data }) => {
         )}
       </div>
 
-      {/* 메인 콘텐츠 구역 */}
       <div className="flex-1 relative z-10 overflow-y-auto scrollbar-hide">
         {step === 0 ? (
-          /* 1단계: 유니버스 메인 (오빠의 원본 4열 그리드 레이아웃 보존) */
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 animate-in zoom-in-95 duration-300">
             {Object.keys(menuData).map((key) => (
               <div key={key} className="group flex flex-col items-center justify-center p-3">
-                <div 
+                <div
                   onClick={() => handleMainClick(key)}
-                  className={`relative p-4 bg-gradient-to-br ${menuData[key].color} rounded-2xl text-white shadow-lg transition-all duration-500 cursor-pointer 
-                  hover:scale-110 hover:rotate-6 hover:shadow-[0_0_30px_-5px_rgba(255,255,255,0.3)]`}
+                  className={`relative p-4 bg-gradient-to-br ${menuData[key].color} rounded-2xl text-white shadow-lg transition-all duration-500 cursor-pointer hover:scale-110 hover:rotate-6 hover:shadow-[0_0_30px_-5px_rgba(255,255,255,0.3)]`}
                 >
-                   {menuData[key].icon}
+                  {menuData[key].icon}
                 </div>
                 <div className="mt-3 text-center">
                   <div className="text-xs font-bold text-slate-300 transition-colors whitespace-pre group-hover:text-white">
@@ -208,10 +198,9 @@ const RegionB = ({ isAdmin, data }) => {
             ))}
           </div>
         ) : step === 1 ? (
-          /* 2단계: 서브 메뉴 카드 */
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 animate-in slide-in-from-bottom-5 duration-500">
             {menuData[selectedCategory].sub.map((subItem, idx) => (
-              <div 
+              <div
                 key={idx}
                 className="group bg-white/5 backdrop-blur-sm border border-white/5 hover:border-indigo-500/30 p-4 rounded-2xl cursor-pointer transition-all hover:bg-white/10"
                 onClick={() => handleSubClick(subItem)}
@@ -226,22 +215,19 @@ const RegionB = ({ isAdmin, data }) => {
             ))}
           </div>
         ) : (
-          /* 3단계: 상세 탐사 (분기 렌더링) */
           <div className="animate-in zoom-in-95 duration-300 h-full">
             {selectedCategory === 'photos' ? (
-              <MemoryArchive 
-                selectedSub={menuData.photos.sub.find(s => s.label === path[1])} 
-                isAdmin={isAdmin} 
+              <MemoryArchive
+                selectedSub={menuData.photos.sub.find(s => s.label === path[1])}
+                isAdmin={isAdmin}
               />
             ) : selectedCategory === 'running' && path[1] === '러닝 로그' ? (
-              /* ✅ 러닝 로그 클릭 시에만 대시보드 연결 */
-              <RunningLog 
-                isAdmin={isAdmin} 
-                workerUrl={RUNNING_WORKER_URL} 
-                adminPassword={adminPassword} 
+              <RunningLog
+                isAdmin={isAdmin}
+                workerUrl={RUNNING_WORKER_URL} // ✅ 찌꺼기 제거 및 배관 복구
+                adminPassword={adminPassword}
               />
             ) : (
-              /* 그 외 기본 리스트 뷰 */
               <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 h-full">
                 <div className="flex items-center gap-3 mb-4 border-b border-white/5 pb-4">
                   <div className={`p-2 rounded-xl bg-gradient-to-br ${menuData[selectedCategory].color} text-white`}>
@@ -258,6 +244,7 @@ const RegionB = ({ isAdmin, data }) => {
                       <div className="flex items-center gap-3">
                         <Sparkles size={12} className="text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                         <span className="text-xs text-slate-300 group-hover:text-white transition-colors">{item}</span>
+                        {item === '신발 마일리지' && <Sparkles size={14} className="text-amber-400 animate-pulse" />}
                       </div>
                       <ChevronRight size={14} className="text-slate-600 group-hover:text-indigo-400 transition-colors" />
                     </div>
