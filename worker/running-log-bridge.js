@@ -1,5 +1,5 @@
 /**
- * Running Log Bridge Worker
+ * Running Log Bridge Worker (순정 원상복구본)
  * 기능: React 앱과 Google Apps Script(GAS) 간의 보안 통로 역할
  */
 
@@ -21,14 +21,13 @@ export default {
 
     // 2. 관리자 권한 체크 (POST 요청 시 필수)
     const adminPassword = request.headers.get("X-Admin-Password");
-    const isAdmin = adminPassword === env.ADMIN_SECURE; // wrangler.toml이나 대시보드에서 설정
+    const isAdmin = adminPassword === env.ADMIN_SECURE;
 
-    // 3. GET: 러닝 데이터 조회 (모든 시트 데이터 가져오기)
+    // 3. GET: 러닝 데이터 조회
     if (request.method === "GET") {
       try {
         const response = await fetch(GAS_URL);
         const data = await response.json();
-
         return new Response(JSON.stringify(data), {
           headers: {
             "Content-Type": "application/json",
@@ -59,7 +58,6 @@ export default {
           body: JSON.stringify(body),
         });
         const result = await response.json();
-
         return new Response(JSON.stringify(result), {
           headers: {
             "Content-Type": "application/json",
