@@ -15,6 +15,7 @@ import {
 // 상세 페이지 및 컨텍스트 임포트
 import MemoryArchive from './RegionB/MemoryArchive';
 import RunningLog from './RegionB/RunningLog';
+import BikeTravel from './RegionB/Bike'; // 신규: Bike Travel 모듈 임포트
 import { AppContext } from './App';
 
 const SecureImage = ({ src, alt, className }) => {
@@ -48,7 +49,7 @@ const RegionB = ({ isAdmin, data }) => {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [path, setPath] = useState([]);
 
-  // ✅ App.jsx의 컨텍스트에서 오리지널 배관(RUNNING_WORKER_URL)을 가져옴
+  // App.jsx의 컨텍스트에서 오리지널 배관(RUNNING_WORKER_URL)을 가져옴
   const { RUNNING_WORKER_URL, adminPassword } = useContext(AppContext);
 
   const menuData = {
@@ -66,9 +67,9 @@ const RegionB = ({ isAdmin, data }) => {
       icon: <Bike size={32} />,
       color: 'from-indigo-500 to-purple-400',
       sub: [
-        { label: '유라시아 2030', detail: ['루트 설계', '비자 확인', '체크리스트'] },
-        { label: '국내 투어', detail: ['경상도 코스', '강원도 코스', '맛집 리스트'] },
-        { label: '계획서', detail: ['지출 예산', '숙박 예약', '항공권'] }
+        { label: '2026' },
+        { label: '2025' },
+        { label: '2024' }
       ]
     },
     running: {
@@ -90,7 +91,7 @@ const RegionB = ({ isAdmin, data }) => {
       ]
     },
     hiking: {
-      label: '등   산',
+      label: '등 산',
       icon: <Mountain size={32} />,
       color: 'from-green-500 to-lime-400',
       sub: [
@@ -99,7 +100,7 @@ const RegionB = ({ isAdmin, data }) => {
       ]
     },
     swimming: {
-      label: '수   영',
+      label: '수 영',
       icon: <Waves size={32} />,
       color: 'from-sky-500 to-blue-400',
       sub: [
@@ -132,91 +133,105 @@ const RegionB = ({ isAdmin, data }) => {
       setStep(0);
       setSelectedCategory(null);
       setPath([]);
-    } else if (targetStep === 1 && step === 2) {
+    } else if (targetStep === 1 && step >= 2) {
       setStep(1);
       setPath([path[0]]);
+    } else if (targetStep === 2 && step === 3) {
+      setStep(2);
+      setPath([path[0], path[1]]);
     }
   };
 
   const goBack = () => {
-    if (step === 2) jumpToStep(1);
+    if (step === 3) jumpToStep(2);
+    else if (step === 2) jumpToStep(1);
     else jumpToStep(0);
   };
 
   return (
-    <div className="w-full h-full p-4 flex flex-col bg-transparent text-slate-200 relative overflow-hidden">
-      <div className="flex items-center gap-3 mb-8 relative z-10 min-h-[40px]">
-        {step > 0 && (
-          <>
-            <button
-              onClick={goBack}
-              className="group flex items-center gap-2 bg-white/5 backdrop-blur-md px-3 py-1.5 rounded-xl hover:bg-white/10 transition-all text-xs font-medium border border-white/10"
-            >
-              <ChevronLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
-              뒤로가기
-            </button>
-            <div className="flex items-center gap-2 ml-2 text-[11px] font-medium text-slate-500">
-              <button
-                onClick={() => jumpToStep(0)}
-                className="hover:text-indigo-400 transition-colors uppercase tracking-wider"
-              >
-                유니버스
-              </button>
-              {path.map((p, i) => (
-                <React.Fragment key={i}>
-                  <ChevronRight size={12} className="opacity-40" />
-                  <button
-                    onClick={() => i === 0 && jumpToStep(1)}
-                    className={`transition-colors whitespace-pre ${i === path.length - 1 ? "text-slate-100 font-bold cursor-default" : "hover:text-slate-300 cursor-pointer"}`}
-                  >
-                    {p}
-                  </button>
-                </React.Fragment>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
+    <div className="h-full flex flex-col gap-4 p-4 lg:p-6 overflow-y-auto custom-scrollbar relative">
+      
+      {step > 0 && (
+        <div className="flex items-center gap-3 animate-in fade-in duration-300">
+          <button
+            onClick={goBack}
+            className="group flex items-center gap-2 bg-white/5 backdrop-blur-md px-3 py-1.5 rounded-xl hover:bg-white/10 transition-all text-xs font-medium border border-white/10 text-white"
+          >
+            <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+            뒤로가기
+          </button>
 
-      <div className="flex-1 relative z-10 overflow-y-auto scrollbar-hide">
-        {step === 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 animate-in zoom-in-95 duration-300">
-            {Object.keys(menuData).map((key) => (
-              <div key={key} className="group flex flex-col items-center justify-center p-3">
-                <div
-                  onClick={() => handleMainClick(key)}
-                  className={`relative p-4 bg-gradient-to-br ${menuData[key].color} rounded-2xl text-white shadow-lg transition-all duration-500 cursor-pointer hover:scale-110 hover:rotate-6 hover:shadow-[0_0_30px_-5px_rgba(255,255,255,0.3)]`}
+          <div className="flex items-center gap-2 text-xs text-slate-400 font-medium flex-wrap">
+            <button
+              onClick={() => jumpToStep(0)}
+              className="hover:text-indigo-400 transition-colors uppercase tracking-wider"
+            >
+              유니버스
+            </button>
+            
+            {path.map((p, i) => (
+              <React.Fragment key={i}>
+                <span className="text-white/20 select-none">{'>'}</span>
+                <button
+                  onClick={() => {
+                    if (i === 0 && step > 1) jumpToStep(1);
+                    else if (i === 1 && step > 2) jumpToStep(2);
+                  }}
+                  className={`transition-colors whitespace-pre ${i === path.length - 1 ? "text-slate-100 font-bold cursor-default" : "hover:text-slate-300 cursor-pointer"}`}
                 >
+                  {p}
+                </button>
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="flex-1 animate-in fade-in duration-500">
+        {step === 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {Object.keys(menuData).map((key) => (
+              <div
+                key={key}
+                onClick={() => handleMainClick(key)}
+                className={`relative p-4 bg-gradient-to-br ${menuData[key].color} rounded-2xl text-white shadow-lg transition-all duration-500 cursor-pointer hover:scale-105 hover:rotate-2 hover:shadow-[0_0_30px_-5px_rgba(255,255,255,0.3)] min-h-[120px] flex flex-col justify-between`}
+              >
+                <div className="flex justify-between items-start">
                   {menuData[key].icon}
+                  <Sparkles size={16} className="opacity-50" />
                 </div>
-                <div className="mt-3 text-center">
-                  <div className="text-xs font-bold text-slate-300 transition-colors whitespace-pre group-hover:text-white">
-                    {menuData[key].label}
-                  </div>
-                </div>
+                <div className="font-bold text-lg tracking-wide">{menuData[key].label}</div>
               </div>
             ))}
           </div>
         ) : step === 1 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 animate-in slide-in-from-bottom-5 duration-500">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {menuData[selectedCategory].sub.map((subItem, idx) => (
               <div
                 key={idx}
-                className="group bg-white/5 backdrop-blur-sm border border-white/5 hover:border-indigo-500/30 p-4 rounded-2xl cursor-pointer transition-all hover:bg-white/10"
+                className="group bg-white/5 backdrop-blur-sm border border-white/5 hover:border-indigo-500/30 p-4 rounded-2xl cursor-pointer transition-all hover:bg-white/10 flex items-center justify-between"
                 onClick={() => handleSubClick(subItem)}
               >
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-bold text-slate-200">{subItem.label}</span>
-                  <div className={`p-1.5 rounded-lg bg-gradient-to-br ${menuData[selectedCategory].color} opacity-20 group-hover:opacity-100 transition-all text-white`}>
-                    {React.cloneElement(menuData[selectedCategory].icon, { size: 16 })}
-                  </div>
+                <span className="text-slate-200 font-medium">{subItem.label}</span>
+                <div className={`p-1.5 rounded-lg bg-gradient-to-br ${menuData[selectedCategory].color} opacity-20 group-hover:opacity-100 transition-all text-white`}>
+                  {React.cloneElement(menuData[selectedCategory].icon, { size: 16 })}
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="animate-in zoom-in-95 duration-300 h-full">
-            {selectedCategory === 'photos' ? (
+          // step 2, 3 로직 통합 분기
+          <div className="h-full">
+            {selectedCategory === 'travel' ? (
+              <BikeTravel 
+                step={step} 
+                path={path} 
+                onSelect={(routeName) => {
+                  setPath([...path, routeName]);
+                  setStep(3); // 4단계 진입 트리거!
+                }} 
+              />
+            ) : selectedCategory === 'photos' ? (
               <MemoryArchive
                 selectedSub={menuData.photos.sub.find(s => s.label === path[1])}
                 isAdmin={isAdmin}
@@ -224,29 +239,27 @@ const RegionB = ({ isAdmin, data }) => {
             ) : selectedCategory === 'running' && path[1] === '러닝 로그' ? (
               <RunningLog
                 isAdmin={isAdmin}
-                workerUrl={RUNNING_WORKER_URL} // ✅ 찌꺼기 제거 및 배관 복구
+                workerUrl={RUNNING_WORKER_URL}
                 adminPassword={adminPassword}
               />
             ) : (
-              <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 h-full">
-                <div className="flex items-center gap-3 mb-4 border-b border-white/5 pb-4">
-                  <div className={`p-2 rounded-xl bg-gradient-to-br ${menuData[selectedCategory].color} text-white`}>
-                    {React.cloneElement(menuData[selectedCategory].icon, { size: 20 })}
+              <div className={`p-6 rounded-2xl bg-gradient-to-br ${menuData[selectedCategory].color} text-white`}>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="p-3 bg-white/20 rounded-xl">
+                    {React.cloneElement(menuData[selectedCategory].icon, { size: 24 })}
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-white">{path[1]}</h3>
-                    <p className="text-[10px] text-slate-500 uppercase tracking-widest">Detail Exploration</p>
+                    <h2 className="text-2xl font-bold">{path[1]}</h2>
+                    <p className="text-sm opacity-80 uppercase tracking-widest mt-1">Detail Exploration</p>
                   </div>
                 </div>
-                <div className="space-y-2">
-                  {menuData[selectedCategory].sub.find(s => s.label === path[1]).detail?.map((item, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5 hover:border-white/10 transition-all group cursor-pointer">
-                      <div className="flex items-center gap-3">
-                        <Sparkles size={12} className="text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <span className="text-xs text-slate-300 group-hover:text-white transition-colors">{item}</span>
-                        {item === '신발 마일리지' && <Sparkles size={14} className="text-amber-400 animate-pulse" />}
-                      </div>
-                      <ChevronRight size={14} className="text-slate-600 group-hover:text-indigo-400 transition-colors" />
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {menuData[selectedCategory].sub.find(s => s.label === path[1])?.detail?.map((item, idx) => (
+                    <div key={idx} className="bg-black/20 p-4 rounded-xl flex items-center gap-3 hover:bg-black/30 transition-colors">
+                      <div className="w-2 h-2 rounded-full bg-white/50" />
+                      <span className="font-medium">{item}</span>
+                      {item === '신발 마일리지' && <div className="ml-auto text-xs bg-red-500/80 px-2 py-1 rounded text-white font-bold animate-pulse">교체 임박</div>}
                     </div>
                   ))}
                 </div>
