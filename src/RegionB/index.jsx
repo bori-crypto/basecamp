@@ -12,11 +12,11 @@ import {
   Sparkles
 } from 'lucide-react';
 
-// 상세 페이지 및 컨텍스트 임포트
-import MemoryArchive from './RegionB/MemoryArchive';
-import RunningLog from './RegionB/RunningLog';
-import BikeTravel from './RegionB/Bike'; // 신규: Bike Travel 모듈 임포트
-import { AppContext } from './App';
+// [수정] 동일 폴더 내에 있으므로 경로에서 'RegionB/' 제거 및 AppContext 상위 경로로 수정
+import MemoryArchive from './MemoryArchive';
+import RunningLog from './RunningLog';
+import BikeTravel from './Bike'; 
+import { AppContext } from '../App';
 
 const SecureImage = ({ src, alt, className }) => {
   const [imgUrl, setImgUrl] = useState(null);
@@ -39,7 +39,7 @@ const SecureImage = ({ src, alt, className }) => {
     };
     fetchImage();
     return () => imgUrl && URL.revokeObjectURL(imgUrl);
-  }, [src]);
+  }, [src, imagePass]);
 
   return imgUrl ? <img src={imgUrl} alt={alt} className={className} /> : <div className={`${className} bg-white/5 animate-pulse`} />;
 };
@@ -49,7 +49,6 @@ const RegionB = ({ isAdmin, data }) => {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [path, setPath] = useState([]);
 
-  // App.jsx의 컨텍스트에서 오리지널 배관(RUNNING_WORKER_URL)을 가져옴
   const { RUNNING_WORKER_URL, adminPassword } = useContext(AppContext);
 
   const menuData = {
@@ -150,7 +149,6 @@ const RegionB = ({ isAdmin, data }) => {
 
   return (
     <div className="h-full flex flex-col gap-4 p-4 lg:p-6 overflow-y-auto custom-scrollbar relative">
-      
       {step > 0 && (
         <div className="flex items-center gap-3 animate-in fade-in duration-300">
           <button
@@ -160,15 +158,8 @@ const RegionB = ({ isAdmin, data }) => {
             <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
             뒤로가기
           </button>
-
           <div className="flex items-center gap-2 text-xs text-slate-400 font-medium flex-wrap">
-            <button
-              onClick={() => jumpToStep(0)}
-              className="hover:text-indigo-400 transition-colors uppercase tracking-wider"
-            >
-              유니버스
-            </button>
-            
+            <button onClick={() => jumpToStep(0)} className="hover:text-indigo-400 transition-colors uppercase tracking-wider">유니버스</button>
             {path.map((p, i) => (
               <React.Fragment key={i}>
                 <span className="text-white/20 select-none">{'>'}</span>
@@ -220,7 +211,6 @@ const RegionB = ({ isAdmin, data }) => {
             ))}
           </div>
         ) : (
-          // step 2, 3 로직 통합 분기
           <div className="h-full">
             {selectedCategory === 'travel' ? (
               <BikeTravel 
@@ -228,7 +218,7 @@ const RegionB = ({ isAdmin, data }) => {
                 path={path} 
                 onSelect={(routeName) => {
                   setPath([...path, routeName]);
-                  setStep(3); // 4단계 진입 트리거!
+                  setStep(3);
                 }} 
               />
             ) : selectedCategory === 'photos' ? (
@@ -245,21 +235,17 @@ const RegionB = ({ isAdmin, data }) => {
             ) : (
               <div className={`p-6 rounded-2xl bg-gradient-to-br ${menuData[selectedCategory].color} text-white`}>
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="p-3 bg-white/20 rounded-xl">
-                    {React.cloneElement(menuData[selectedCategory].icon, { size: 24 })}
-                  </div>
+                  <div className="p-3 bg-white/20 rounded-xl">{React.cloneElement(menuData[selectedCategory].icon, { size: 24 })}</div>
                   <div>
                     <h2 className="text-2xl font-bold">{path[1]}</h2>
                     <p className="text-sm opacity-80 uppercase tracking-widest mt-1">Detail Exploration</p>
                   </div>
                 </div>
-                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {menuData[selectedCategory].sub.find(s => s.label === path[1])?.detail?.map((item, idx) => (
                     <div key={idx} className="bg-black/20 p-4 rounded-xl flex items-center gap-3 hover:bg-black/30 transition-colors">
                       <div className="w-2 h-2 rounded-full bg-white/50" />
                       <span className="font-medium">{item}</span>
-                      {item === '신발 마일리지' && <div className="ml-auto text-xs bg-red-500/80 px-2 py-1 rounded text-white font-bold animate-pulse">교체 임박</div>}
                     </div>
                   ))}
                 </div>
