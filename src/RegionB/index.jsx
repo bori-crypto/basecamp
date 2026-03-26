@@ -7,12 +7,10 @@ import {
   Mountain,
   Waves,
   Dumbbell,
-  ChevronLeft,
-  ChevronRight,
-  Sparkles
+  ChevronLeft
 } from 'lucide-react';
 
-// [수정] 동일 폴더 내에 있으므로 경로에서 'RegionB/' 제거 및 AppContext 상위 경로로 수정
+// 상세 페이지 및 컨텍스트 임포트
 import MemoryArchive from './MemoryArchive';
 import RunningLog from './RunningLog';
 import BikeTravel from './Bike'; 
@@ -148,7 +146,7 @@ const RegionB = ({ isAdmin, data }) => {
   };
 
   return (
-    <div className="h-full flex flex-col gap-4 p-4 lg:p-6 overflow-y-auto custom-scrollbar relative">
+    <div className="h-full flex flex-col gap-4 p-4 lg:p-6 overflow-y-auto custom-scrollbar relative text-white">
       {step > 0 && (
         <div className="flex items-center gap-3 animate-in fade-in duration-300">
           <button
@@ -185,13 +183,10 @@ const RegionB = ({ isAdmin, data }) => {
               <div
                 key={key}
                 onClick={() => handleMainClick(key)}
-                className={`relative p-4 bg-gradient-to-br ${menuData[key].color} rounded-2xl text-white shadow-lg transition-all duration-500 cursor-pointer hover:scale-105 hover:rotate-2 hover:shadow-[0_0_30px_-5px_rgba(255,255,255,0.3)] min-h-[120px] flex flex-col justify-between`}
+                className={`relative p-4 bg-gradient-to-br ${menuData[key].color} rounded-2xl text-white shadow-lg transition-all duration-500 cursor-pointer hover:scale-110 hover:rotate-6 hover:shadow-[0_0_30px_-5px_rgba(255,255,255,0.3)]`}
               >
-                <div className="flex justify-between items-start">
-                  {menuData[key].icon}
-                  <Sparkles size={16} className="opacity-50" />
-                </div>
-                <div className="font-bold text-lg tracking-wide">{menuData[key].label}</div>
+                {menuData[key].icon}
+                {menuData[key].label}
               </div>
             ))}
           </div>
