@@ -7,7 +7,8 @@ import {
   Mountain,
   Waves,
   Dumbbell,
-  ChevronLeft
+  ChevronLeft,
+  Sparkles
 } from 'lucide-react';
 
 // 상세 페이지 및 컨텍스트 임포트
@@ -178,15 +179,23 @@ const RegionB = ({ isAdmin, data }) => {
 
       <div className="flex-1 animate-in fade-in duration-500">
         {step === 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          /* ✅ [수정] 아이콘 전용 그릇(Container) 디자인 적용 섹션 */
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {Object.keys(menuData).map((key) => (
-              <div
-                key={key}
-                onClick={() => handleMainClick(key)}
-                className={`relative p-4 bg-gradient-to-br ${menuData[key].color} rounded-2xl text-white shadow-lg transition-all duration-500 cursor-pointer hover:scale-110 hover:rotate-6 hover:shadow-[0_0_30px_-5px_rgba(255,255,255,0.3)]`}
-              >
-                {menuData[key].icon}
-                {menuData[key].label}
+              <div key={key} className="group flex flex-col items-center justify-center p-2">
+                {/* 보석함 디자인의 아이콘 그릇 */}
+                <div
+                  onClick={() => handleMainClick(key)}
+                  className={`relative p-4 bg-gradient-to-br ${menuData[key].color} rounded-2xl text-white shadow-lg transition-all duration-500 cursor-pointer hover:scale-110 hover:rotate-6 hover:shadow-[0_0_30px_-5px_rgba(255,255,255,0.3)]`}
+                >
+                  {menuData[key].icon}
+                </div>
+                {/* 하단 텍스트 라벨 */}
+                <div className="mt-3 text-center">
+                  <div className="text-xs font-bold text-slate-300 whitespace-pre group-hover:text-white uppercase tracking-tighter transition-colors">
+                    {menuData[key].label}
+                  </div>
+                </div>
               </div>
             ))}
           </div>
