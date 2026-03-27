@@ -7,11 +7,10 @@ import {
 } from 'lucide-react';
 
 import Regiona from './Regiona';
-import RegionB from './RegionB';
-// ✅ 1. 3단계 지도 컴포넌트 임포트 추가
+import RegionB from './RegionB/index';
+// ✅ 추가: 3단계 지도 컴포넌트를 메인에서 바로 부르기 위해 임포트!
 import { BikeRouteFullMapView } from './RegionB/Bike';
 
-// Context 생성
 export const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
@@ -71,7 +70,8 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  const pushPage = (id, title, icon) => setHistory(prev => [...prev, { id, title, icon }]);
+  // ✅ 수정: customPath 배열을 받아 저장할 수 있도록 파라미터 추가!
+  const pushPage = (id, title, icon, customPath = []) => setHistory(prev => [...prev, { id, title, icon, customPath }]);
   const popPage = () => history.length > 1 && setHistory(prev => prev.slice(0, -1));
   const jumpTo = (index) => setHistory(prev => prev.slice(0, index + 1));
 
@@ -116,15 +116,12 @@ const Breadcrumbs = () => {
 };
 
 const Layout = ({ children }) => {
-  const { isPrivateMode, togglePrivateMode } = useContext(AppContext);
+  const { isPrivateMode, togglePrivateMode, currentPage } = useContext(AppContext);
 
   return (
     <div className="min-h-screen p-4 flex flex-col bg-base-bg text-white">
-      <header className="flex justify-between items-center mb-6">
-        <h1 className="text-xl font-bold flex items-center gap-2">
-          <Layers className="text-indigo-400" />
-          Basecamp
-        </h1>
+      {/* ✅ 1번 지시사항: Basecamp 로고/글자 삭제. 오른쪽 정렬로 인증버튼만 유지 */}
+      <header className="flex justify-end items-center mb-6">
         <button 
           onClick={togglePrivateMode} 
           className={`px-4 py-2 rounded-full text-[10px] font-black tracking-[0.15em] border backdrop-blur-xl ${isPrivateMode ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' : 'bg-slate-800/40 text-slate-400 border-white/10'}`}
@@ -132,7 +129,9 @@ const Layout = ({ children }) => {
           {isPrivateMode ? 'ADMIN_SECURE' : 'GUEST_ACCESS'}
         </button>
       </header>
-      <Breadcrumbs />
+      
+      {/* 3단계 지도를 볼 때만 기본 빵판을 숨겨서 이중 출력을 막음 */}
+      {currentPage.id !== 'bike-map' && <Breadcrumbs />}
       {children}
     </div>
   );
@@ -153,21 +152,15 @@ const Dashboard = () => {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
-      {/* RegionA (좌상단) */}
       <WidgetCard noPadding={true}>
         <Regiona data={realTimeData} />
       </WidgetCard>
-
-      {/* RegionB: Roadmap (우상단) */}
       <WidgetCard noPadding={true}>
         <RegionB isAdmin={isPrivateMode} />
       </WidgetCard>
-
-      {/* 하단 위젯들 */}
       <WidgetCard onClick={() => pushPage('storage', 'Database', <Database />)}>
         <h2 className="text-lg font-bold">Storage Cluster</h2>
       </WidgetCard>
-
       <WidgetCard onClick={() => pushPage('network', 'Network', <Server />)}>
         <h2 className="text-lg font-bold">Edge Server</h2>
       </WidgetCard>
@@ -176,7 +169,7 @@ const Dashboard = () => {
 };
 
 const AppContent = () => {
-  const { currentPage, realTimeData } = useContext(AppContext);
+  const { currentPage, realTimeData, popPage, jumpTo } = useContext(AppContext);
 
   if (currentPage.id === 'schedules-detail') {
     const isAdminAuthenticated = Array.isArray(realTimeData?.todo);
@@ -189,13 +182,38 @@ const AppContent = () => {
     <Layout>
       {currentPage.id === 'home' ? <Dashboard /> : (
         <>
-          {/* ✅ 2. 'bike-map' 페이지일 때만 지도를 넓게 렌더링하도록 조건 추가! */}
           {currentPage.id === 'bike-map' ? (
-            <div className="flex-1 w-full min-h-[600px] rounded-[3rem] overflow-hidden border border-white/5 shadow-2xl relative animate-in zoom-in-95 duration-500">
-              <BikeRouteFullMapView title={currentPage.title} />
+            /* ✅ 3번 지시사항: flex-1을 적용하여 지도를 화면 아래쪽까지 꽉 차게 연장 */
+            <div className="flex flex-col flex-1 w-full animate-in zoom-in-95 duration-500">
+              
+              {/* ✅ 2번 지시사항: 3단계 빵판(네비게이션)을 오빠가 준 이미지와 동일하게 유지 */}
+              <div className="flex items-center gap-3 mb-4">
+                <button onClick={popPage} className="group flex items-center gap-2 bg-[#1e293b] hover:bg-[#334155] border border-white/5 px-4 py-2 rounded-2xl transition-all text-[13px] font-medium text-white shadow-lg">
+                  <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+                  뒤로가기
+                </button>
+                <div className="flex items-center gap-2 text-[13px] text-slate-400 font-medium flex-wrap bg-[#0f172a]/60 px-4 py-2 rounded-2xl border border-white/5 shadow-lg">
+                  <button onClick={() => jumpTo(0)} className="hover:text-indigo-400 transition-colors uppercase tracking-wider">유니버스</button>
+                  {currentPage.customPath && currentPage.customPath.map((p, i) => (
+                    <React.Fragment key={i}>
+                      <span className="text-white/20 select-none">{'>'}</span>
+                      <button
+                        onClick={() => { if (i < currentPage.customPath.length - 1) popPage(); }}
+                        className={`transition-colors whitespace-pre ${i === currentPage.customPath.length - 1 ? "text-slate-100 font-bold cursor-default" : "hover:text-slate-300 cursor-pointer"}`}
+                      >
+                        {p}
+                      </button>
+                    </React.Fragment>
+                  ))}
+                </div>
+              </div>
+
+              {/* 연장된 지도 컨테이너 */}
+              <div className="flex-1 w-full rounded-[2.5rem] overflow-hidden border border-white/5 shadow-2xl relative min-h-[500px]">
+                <BikeRouteFullMapView title={currentPage.title} />
+              </div>
             </div>
           ) : (
-            /* 기존 상세 화면 형태는 그대로 유지 */
             <div className="flex-1 p-6 border border-white/10 rounded-3xl bg-white/5 backdrop-blur-md">
               <h2 className="text-2xl font-bold flex items-center gap-3">
                 {currentPage.icon && <currentPage.icon className="text-indigo-400" />}
