@@ -8,7 +8,7 @@ import {
 
 import Regiona from './Regiona';
 import RegionB from './RegionB/index';
-// ✅ 추가: 3단계 지도 컴포넌트를 메인에서 바로 부르기 위해 임포트!
+// ✅ 3단계 지도 컴포넌트 임포트
 import { BikeRouteFullMapView } from './RegionB/Bike';
 
 export const AppContext = createContext();
@@ -18,6 +18,9 @@ export const AppProvider = ({ children }) => {
   const [adminPassword, setAdminPassword] = useState("");
   const [history, setHistory] = useState([{ id: 'home', title: 'Dashboard', icon: Home }]);
   const [realTimeData, setRealTimeData] = useState(null);
+  
+  // ✅ 핵심: RegionB가 화면에서 사라져도 상태를 기억하도록 사령부에 메모리 추가
+  const [regionBState, setRegionBState] = useState({ step: 0, path: [], selectedCategory: null });
 
   const WORKER_URL = 'https://sparkling-credit-38ce.borimundi.workers.dev';
   const RUNNING_WORKER_URL = 'https://basecamp-run-bridge.borimundi.workers.dev';
@@ -70,7 +73,6 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  // ✅ 수정: customPath 배열을 받아 저장할 수 있도록 파라미터 추가!
   const pushPage = (id, title, icon, customPath = []) => setHistory(prev => [...prev, { id, title, icon, customPath }]);
   const popPage = () => history.length > 1 && setHistory(prev => prev.slice(0, -1));
   const jumpTo = (index) => setHistory(prev => prev.slice(0, index + 1));
@@ -87,7 +89,8 @@ export const AppProvider = ({ children }) => {
     <AppContext.Provider value={{
       isPrivateMode, togglePrivateMode, history, currentPage,
       pushPage, popPage, jumpTo, realTimeData,
-      adminPassword, RUNNING_WORKER_URL
+      adminPassword, RUNNING_WORKER_URL,
+      regionBState, setRegionBState // RegionB 상태 관리 공유
     }}>
       {children}
     </AppContext.Provider>
@@ -119,8 +122,9 @@ const Layout = ({ children }) => {
   const { isPrivateMode, togglePrivateMode, currentPage } = useContext(AppContext);
 
   return (
+    // ✅ 내 실수 삭제: 불필요한 박스 삭제하고 오빠의 min-h-screen 순정 코드 복구
     <div className="min-h-screen p-4 flex flex-col bg-base-bg text-white">
-      {/* ✅ 1번 지시사항: Basecamp 로고/글자 삭제. 오른쪽 정렬로 인증버튼만 유지 */}
+      {/* Basecamp 글자 삭제하고 우측 정렬된 인증 버튼만 유지 */}
       <header className="flex justify-end items-center mb-6">
         <button 
           onClick={togglePrivateMode} 
@@ -130,7 +134,7 @@ const Layout = ({ children }) => {
         </button>
       </header>
       
-      {/* 3단계 지도를 볼 때만 기본 빵판을 숨겨서 이중 출력을 막음 */}
+      {/* 3단계 지도 화면일 때는 A구역용 빵판 숨김 */}
       {currentPage.id !== 'bike-map' && <Breadcrumbs />}
       {children}
     </div>
@@ -169,7 +173,7 @@ const Dashboard = () => {
 };
 
 const AppContent = () => {
-  const { currentPage, realTimeData, popPage, jumpTo } = useContext(AppContext);
+  const { currentPage, realTimeData, popPage, setRegionBState } = useContext(AppContext);
 
   if (currentPage.id === 'schedules-detail') {
     const isAdminAuthenticated = Array.isArray(realTimeData?.todo);
@@ -183,22 +187,53 @@ const AppContent = () => {
       {currentPage.id === 'home' ? <Dashboard /> : (
         <>
           {currentPage.id === 'bike-map' ? (
-            /* ✅ 3번 지시사항: flex-1을 적용하여 지도를 화면 아래쪽까지 꽉 차게 연장 */
+            /* ✅ 지도 컨테이너: flex-1을 통해 화면 하단 끝까지 꽉 차게 연장됨 */
             <div className="flex flex-col flex-1 w-full animate-in zoom-in-95 duration-500">
               
-              {/* ✅ 2번 지시사항: 3단계 빵판(네비게이션)을 오빠가 준 이미지와 동일하게 유지 */}
+              {/* 3단계 네비게이션 빵판 */}
               <div className="flex items-center gap-3 mb-4">
-                <button onClick={popPage} className="group flex items-center gap-2 bg-[#1e293b] hover:bg-[#334155] border border-white/5 px-4 py-2 rounded-2xl transition-all text-[13px] font-medium text-white shadow-lg">
+                <button 
+                  onClick={() => {
+                    // 뒤로가기 누르면 정확히 2단계 상태로 복구 후 팝
+                    if (currentPage.customPath && currentPage.customPath.length > 0) {
+                      setRegionBState(prev => ({
+                        ...prev,
+                        step: currentPage.customPath.length - 1,
+                        path: currentPage.customPath.slice(0, -1)
+                      }));
+                    }
+                    popPage();
+                  }} 
+                  className="group flex items-center gap-2 bg-[#1e293b] hover:bg-[#334155] border border-white/5 px-4 py-2 rounded-2xl transition-all text-[13px] font-medium text-white shadow-lg"
+                >
                   <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
                   뒤로가기
                 </button>
                 <div className="flex items-center gap-2 text-[13px] text-slate-400 font-medium flex-wrap bg-[#0f172a]/60 px-4 py-2 rounded-2xl border border-white/5 shadow-lg">
-                  <button onClick={() => jumpTo(0)} className="hover:text-indigo-400 transition-colors uppercase tracking-wider">유니버스</button>
+                  <button 
+                    onClick={() => {
+                      setRegionBState({ step: 0, path: [], selectedCategory: null });
+                      popPage();
+                    }} 
+                    className="hover:text-indigo-400 transition-colors uppercase tracking-wider"
+                  >
+                    유니버스
+                  </button>
                   {currentPage.customPath && currentPage.customPath.map((p, i) => (
                     <React.Fragment key={i}>
                       <span className="text-white/20 select-none">{'>'}</span>
                       <button
-                        onClick={() => { if (i < currentPage.customPath.length - 1) popPage(); }}
+                        onClick={() => { 
+                          if (i < currentPage.customPath.length - 1) {
+                            // 중간 빵판(예: Bike Travel) 누르면 해당 단계로 복구 후 팝
+                            setRegionBState(prev => ({
+                              ...prev,
+                              step: i + 1,
+                              path: currentPage.customPath.slice(0, i + 1)
+                            }));
+                            popPage();
+                          }
+                        }}
                         className={`transition-colors whitespace-pre ${i === currentPage.customPath.length - 1 ? "text-slate-100 font-bold cursor-default" : "hover:text-slate-300 cursor-pointer"}`}
                       >
                         {p}
@@ -208,7 +243,7 @@ const AppContent = () => {
                 </div>
               </div>
 
-              {/* 연장된 지도 컨테이너 */}
+              {/* 연장된 지도 뷰 */}
               <div className="flex-1 w-full rounded-[2.5rem] overflow-hidden border border-white/5 shadow-2xl relative min-h-[500px]">
                 <BikeRouteFullMapView title={currentPage.title} />
               </div>
