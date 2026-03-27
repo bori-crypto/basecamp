@@ -1,14 +1,6 @@
 import React, { useState } from 'react';
 import { 
-  MapPin, 
-  Navigation, 
-  Calendar, 
-  Flag, 
-  AlertCircle, 
-  Map as MapIcon, 
-  ChevronDown,
-  ChevronUp,
-  Plus
+  MapPin, Navigation, Calendar, Flag, AlertCircle, Map as MapIcon, ChevronDown, ChevronUp, Plus
 } from 'lucide-react';
 
 export const BikeRouteFullMapView = ({ title }) => {
@@ -70,7 +62,6 @@ export const BikeRouteFullMapView = ({ title }) => {
         </div>
       </div>
       
-      {/* 우측 하단 줌 컨트롤 */}
       <div className="absolute bottom-6 right-6 z-10 flex flex-col gap-2 opacity-30 pointer-events-none">
         <div className="w-9 h-9 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl flex items-center justify-center font-black text-[10px]">+</div>
         <div className="w-9 h-9 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl flex items-center justify-center font-black text-[10px]">-</div>
@@ -89,16 +80,10 @@ export default function Bike({ step, path, onSelect }) {
     if (newRoute.trim()) { setRoutes([...routes, newRoute.trim()]); setNewRoute(''); }
   };
 
-  // ✅ 삭제됨: if (step === 3) return <BikeRouteFullMapView ... />
-
   return (
     <div className="flex flex-col gap-5 animate-in fade-in duration-300">
       <form onSubmit={handleAdd} className="flex gap-2">
-        <input
-          type="text" value={newRoute} onChange={(e) => setNewRoute(e.target.value)}
-          placeholder="새로운 코스 이름 입력"
-          className="flex-1 bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-indigo-500/50 transition-all"
-        />
+        <input type="text" value={newRoute} onChange={(e) => setNewRoute(e.target.value)} placeholder="새로운 코스 이름 입력" className="flex-1 bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-indigo-500/50 transition-all" />
         <button type="submit" className="bg-indigo-500 hover:bg-indigo-600 text-white p-4 rounded-2xl transition-all"><Plus size={24} /></button>
       </form>
       <div className="flex flex-col gap-3">
