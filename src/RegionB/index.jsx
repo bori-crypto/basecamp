@@ -152,12 +152,12 @@ const RegionB = ({ isAdmin, data }) => {
         <div className="flex items-center gap-3 animate-in fade-in duration-300">
           <button
             onClick={goBack}
-            className="group flex items-center gap-2 bg-white/5 backdrop-blur-md px-3 py-1.5 rounded-xl hover:bg-white/10 transition-all text-xs font-medium border border-white/10 text-white"
+            className="group flex items-center gap-2 bg-white/5 backdrop-blur-md px-3 py-1.5 rounded-xl hover:bg-white/10 transition-all text-xs font-medium border border-white/10 text-white shadow-lg"
           >
             <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
             뒤로가기
           </button>
-          <div className="flex items-center gap-2 text-xs text-slate-400 font-medium flex-wrap">
+          <div className="flex items-center gap-2 text-xs text-slate-400 font-medium flex-wrap bg-slate-900/40 px-3 py-1.5 rounded-xl backdrop-blur-md border border-white/5">
             <button onClick={() => jumpToStep(0)} className="hover:text-indigo-400 transition-colors uppercase tracking-wider">유니버스</button>
             {path.map((p, i) => (
               <React.Fragment key={i}>
@@ -179,18 +179,15 @@ const RegionB = ({ isAdmin, data }) => {
 
       <div className="flex-1 animate-in fade-in duration-500">
         {step === 0 ? (
-          /* ✅ [수정] 아이콘 전용 그릇(Container) 디자인 적용 섹션 */
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {Object.keys(menuData).map((key) => (
               <div key={key} className="group flex flex-col items-center justify-center p-2">
-                {/* 보석함 디자인의 아이콘 그릇 */}
                 <div
                   onClick={() => handleMainClick(key)}
                   className={`relative p-4 bg-gradient-to-br ${menuData[key].color} rounded-2xl text-white shadow-lg transition-all duration-500 cursor-pointer hover:scale-110 hover:rotate-6 hover:shadow-[0_0_30px_-5px_rgba(255,255,255,0.3)]`}
                 >
                   {menuData[key].icon}
                 </div>
-                {/* 하단 텍스트 라벨 */}
                 <div className="mt-3 text-center">
                   <div className="text-xs font-bold text-slate-300 whitespace-pre group-hover:text-white uppercase tracking-tighter transition-colors">
                     {menuData[key].label}
