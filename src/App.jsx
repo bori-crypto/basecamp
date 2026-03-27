@@ -1,210 +1,91 @@
-import React, { useState, createContext, useContext, useMemo, useEffect } from 'react';
-import {
-  Camera, Map as MapIcon, BarChart2,
-  Shield, ShieldOff, ChevronRight,
-  Settings, Database, Server, Clock,
-  ChevronLeft, Home, Layers, Lock, CloudSun, TrendingUp, DollarSign
-} from 'lucide-react';
-
+import React, { useState, useEffect, createContext } from 'react';
 import Regiona from './Regiona';
-import RegionB from './RegionB';
+import RegionB from './RegionB/index';
+// ✅ 지도를 전체 화면으로 띄우기 위해 컴포넌트 임포트
+import { BikeRouteFullMapView } from './RegionB/Bike';
 
-// Context 생성
 export const AppContext = createContext();
 
-export const AppProvider = ({ children }) => {
-  const [isPrivateMode, setIsPrivateMode] = useState(false);
-  const [adminPassword, setAdminPassword] = useState("");
-  const [history, setHistory] = useState([{ id: 'home', title: 'Dashboard', icon: Home }]);
-  const [realTimeData, setRealTimeData] = useState(null);
-
-  const WORKER_URL = 'https://sparkling-credit-38ce.borimundi.workers.dev';
-  // ✅ 추가: 러닝 로그 전용 워커 URL
-  const RUNNING_WORKER_URL = 'https://basecamp-run-bridge.borimundi.workers.dev';
-
-  const fetchDashboardData = async (password = adminPassword) => {
-    try {
-      const headers = { "Content-Type": "application/json" };
-      if (password) headers["X-Admin-Password"] = password;
-
-      const response = await fetch(WORKER_URL, { headers });
-      if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
-          throw new Error('암호가 올바르지 않습니다.');
-        }
-        throw new Error('서버 통신에 실패했습니다.');
-      }
-
-      const json = await response.json();
-      setRealTimeData(json);
-
-      if (password) {
-        if (Array.isArray(json.todo)) {
-          setIsPrivateMode(true);
-          setAdminPassword(password);
-        } else {
-          setIsPrivateMode(false);
-          setAdminPassword("");
-          alert("인증에 실패했습니다. 암호를 다시 확인해 주세요.");
-        }
-      } else {
-        setIsPrivateMode(false);
-        setAdminPassword("");
-      }
-    } catch (error) {
-      console.error("Data Fetch Error:", error);
-      setIsPrivateMode(false);
-      setAdminPassword("");
-      if (password) alert(error.message);
-    }
-  };
-
-  const togglePrivateMode = () => {
-    if (!isPrivateMode) {
-      const input = prompt("ADMIN_SECURE 암호를 입력하세요:");
-      if (input) {
-        fetchDashboardData(input);
-      }
-    } else {
-      fetchDashboardData("");
-    }
-  };
-
-  const pushPage = (id, title, icon) => setHistory(prev => [...prev, { id, title, icon }]);
-  const popPage = () => history.length > 1 && setHistory(prev => prev.slice(0, -1));
-  const jumpTo = (index) => setHistory(prev => prev.slice(0, index + 1));
-
-  const currentPage = useMemo(() => history[history.length - 1], [history]);
-
-  useEffect(() => {
-    fetchDashboardData();
-    const interval = setInterval(() => fetchDashboardData(adminPassword), 600000);
-    return () => clearInterval(interval);
-  }, [adminPassword]);
-
-  return (
-    // ✅ 수정: Provider value에 adminPassword와 RUNNING_WORKER_URL 추가
-    <AppContext.Provider value={{
-      isPrivateMode, togglePrivateMode, history, currentPage,
-      pushPage, popPage, jumpTo, realTimeData,
-      adminPassword, RUNNING_WORKER_URL
-    }}>
-      {children}
-    </AppContext.Provider>
-  );
-};
-
-const Breadcrumbs = () => {
-  const { history, jumpTo } = useContext(AppContext);
-  if (history.length <= 1) return null;
-
-  return (
-    <div className="flex items-center gap-2 mb-4">
-      {history.map((step, idx) => (
-        <React.Fragment key={step.id}>
-          <button 
-            onClick={() => jumpTo(idx)} 
-            className={`text-[10px] font-black uppercase tracking-[0.2em] ${idx === history.length - 1 ? 'text-indigo-400' : 'text-slate-300'}`}
-          >
-            {step.title}
-          </button>
-          {idx < history.length - 1 && <ChevronRight size={12} className="text-slate-500" />}
-        </React.Fragment>
-      ))}
-    </div>
-  );
-};
-
-const Layout = ({ children }) => {
-  const { isPrivateMode, togglePrivateMode } = useContext(AppContext);
-
-  return (
-    <div className="min-h-screen p-4 flex flex-col bg-base-bg text-white">
-      <header className="flex justify-between items-center mb-6">
-        <h1 className="text-xl font-bold flex items-center gap-2">
-          <Layers className="text-indigo-400" />
-          Basecamp
-        </h1>
-        <button 
-          onClick={togglePrivateMode} 
-          className={`px-4 py-2 rounded-full text-[10px] font-black tracking-[0.15em] border backdrop-blur-xl ${isPrivateMode ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' : 'bg-slate-800/40 text-slate-400 border-white/10'}`}
-        >
-          {isPrivateMode ? 'ADMIN_SECURE' : 'GUEST_ACCESS'}
-        </button>
-      </header>
-      <Breadcrumbs />
-      {children}
-    </div>
-  );
-};
-
-// WidgetCard: 맥북 크롬 글자 잘림 방지를 위해 lg:p-14에서 lg:p-8로 여백 다이어트
-const WidgetCard = ({ children, onClick, noPadding = false }) => (
-  <div 
-    onClick={onClick}
-    style={{ background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' }}
-    className={`backdrop-blur-2xl border border-white/10 rounded-[2rem] lg:rounded-[3rem] ${noPadding ? '' : 'p-5 lg:p-8 landscape:p-4 lg:landscape:p-8'} transition-all cursor-pointer flex flex-col h-full min-h-[240px] lg:min-h-[420px] landscape:min-h-[160px] lg:landscape:min-h-[420px] w-full touch-manipulation`}
-  >
-    {children}
-  </div>
-);
-
-const Dashboard = () => {
-  const { pushPage, realTimeData, isPrivateMode } = useContext(AppContext);
-
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
-      {/* RegionA (좌상단) */}
-      <WidgetCard noPadding={true}>
-        <Regiona data={realTimeData} />
-      </WidgetCard>
-
-      {/* RegionB: Roadmap (우상단) */}
-      <WidgetCard noPadding={true}>
-        <RegionB isAdmin={isPrivateMode} />
-      </WidgetCard>
-
-      {/* 하단 위젯들 */}
-      <WidgetCard onClick={() => pushPage('storage', 'Database', <Database />)}>
-        <h2 className="text-lg font-bold">Storage Cluster</h2>
-      </WidgetCard>
-
-      <WidgetCard onClick={() => pushPage('network', 'Network', <Server />)}>
-        <h2 className="text-lg font-bold">Edge Server</h2>
-      </WidgetCard>
-    </div>
-  );
-};
-
-const AppContent = () => {
-  const { currentPage, realTimeData } = useContext(AppContext);
-
-  if (currentPage.id === 'schedules-detail') {
-    const isAdminAuthenticated = Array.isArray(realTimeData?.todo);
-    if (!isAdminAuthenticated) {
-      return <div className="p-10 text-center text-red-400">접근 권한이 없습니다.</div>;
-    }
-  }
-
-  return (
-    <Layout>
-      {currentPage.id === 'home' ? <Dashboard /> : (
-        <div className="flex-1 p-6 border border-white/10 rounded-3xl bg-white/5 backdrop-blur-md">
-          <h2 className="text-2xl font-bold flex items-center gap-3">
-            <currentPage.icon className="text-indigo-400" />
-            {currentPage.title}
-          </h2>
-          <p className="text-slate-400 mt-4">세부 콘텐츠 구현 준비 중...</p>
-        </div>
-      )}
-    </Layout>
-  );
-};
-
 export default function App() {
+  const [page, setPage] = useState(null);
+  const [pageTitle, setPageTitle] = useState('');
+  const [pageIcon, setPageIcon] = useState(null);
+
+  // 전역 사령부: 상세 페이지 띄우기 무전기
+  const pushPage = (id, title, icon) => {
+    setPage(id);
+    setPageTitle(title);
+    setPageIcon(icon);
+  };
+
+  // 전역 사령부: 뒤로가기 무전기
+  const popPage = () => {
+    setPage(null);
+  };
+
+  const contextValue = {
+    RUNNING_WORKER_URL: "https://basecamp-run-log.borimundi.workers.dev",
+    adminPassword: "8698",
+    pushPage,
+    popPage
+  };
+
   return (
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
+    <AppContext.Provider value={contextValue}>
+      <div className="min-h-screen bg-[#0a0f1d] text-slate-200 font-sans p-4 lg:p-8 overflow-hidden flex flex-col items-center justify-center">
+        
+        {/* 베이스캠프 컨테이너 */}
+        <div className="w-full max-w-[1400px] h-[90vh] bg-slate-900/60 backdrop-blur-3xl rounded-[3rem] border border-white/5 shadow-2xl relative flex flex-col overflow-hidden">
+          
+          {/* 상단 통합 헤더 */}
+          <div className="p-6 lg:p-8 flex justify-between items-center border-b border-white/5">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-indigo-500 rounded-xl flex items-center justify-center font-black text-white shadow-lg shadow-indigo-500/20 italic">B</div>
+              <h1 className="text-xl font-black tracking-tighter uppercase">Basecamp <span className="text-indigo-400 font-light tracking-widest text-xs ml-1 opacity-60">Commander</span></h1>
+            </div>
+            
+            {page && (
+              <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-indigo-400 bg-indigo-500/10 px-4 py-2 rounded-full border border-indigo-500/20">
+                Dashboard <span className="opacity-30">/</span> {pageTitle}
+              </div>
+            )}
+          </div>
+
+          {/* 메인 캔버스 영역 */}
+          <div className="flex-1 relative overflow-hidden">
+            {!page ? (
+              /* 🏠 대시보드 메인 레이아웃 (Regiona + RegionB) */
+              <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 lg:p-8">
+                <div className="lg:col-span-5 h-full overflow-hidden">
+                  <Regiona />
+                </div>
+                <div className="lg:col-span-7 h-full bg-slate-800/20 rounded-[2.5rem] border border-white/5 overflow-hidden">
+                  <RegionB isAdmin={true} />
+                </div>
+              </div>
+            ) : (
+              /* 🗺️ 독립된 상세 화면 (오빠가 원했던 넓은 공간!) */
+              <div className="h-full p-6 lg:p-8 animate-in zoom-in-95 duration-500 flex flex-col">
+                <div className="flex items-center gap-4 mb-6">
+                  <button onClick={popPage} className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/10 transition-all text-xs font-bold uppercase tracking-widest">Back</button>
+                  <h2 className="text-3xl font-black tracking-tighter uppercase">{pageTitle}</h2>
+                </div>
+                
+                <div className="flex-1 rounded-[3rem] overflow-hidden border border-white/5 shadow-inner">
+                  {/* ✅ Bike Travel 지도를 넓은 영역에 렌더링! */}
+                  {page === 'bike-map' ? (
+                    <BikeRouteFullMapView title={pageTitle} />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-slate-950/20">
+                      <p className="text-slate-500 font-bold uppercase tracking-[0.5em] animate-pulse italic">Loading Content...</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </AppContext.Provider>
   );
 }
