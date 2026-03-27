@@ -18,8 +18,8 @@ export const AppProvider = ({ children }) => {
   const [adminPassword, setAdminPassword] = useState("");
   const [history, setHistory] = useState([{ id: 'home', title: 'Dashboard', icon: Home }]);
   const [realTimeData, setRealTimeData] = useState(null);
-  
-  // ✅ 핵심: RegionB가 화면에서 사라져도 상태를 기억하도록 사령부에 메모리 추가
+
+  // ✅ 핵심: B구역이 화면에서 사라져도 상태를 기억하도록 사령부에 메모리 공간 추가!
   const [regionBState, setRegionBState] = useState({ step: 0, path: [], selectedCategory: null });
 
   const WORKER_URL = 'https://sparkling-credit-38ce.borimundi.workers.dev';
@@ -73,6 +73,7 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  // customPath 배열을 받아 저장할 수 있도록 파라미터 추가
   const pushPage = (id, title, icon, customPath = []) => setHistory(prev => [...prev, { id, title, icon, customPath }]);
   const popPage = () => history.length > 1 && setHistory(prev => prev.slice(0, -1));
   const jumpTo = (index) => setHistory(prev => prev.slice(0, index + 1));
@@ -90,7 +91,7 @@ export const AppProvider = ({ children }) => {
       isPrivateMode, togglePrivateMode, history, currentPage,
       pushPage, popPage, jumpTo, realTimeData,
       adminPassword, RUNNING_WORKER_URL,
-      regionBState, setRegionBState // RegionB 상태 관리 공유
+      regionBState, setRegionBState // ✅ B구역 메모리 공급
     }}>
       {children}
     </AppContext.Provider>
@@ -122,9 +123,8 @@ const Layout = ({ children }) => {
   const { isPrivateMode, togglePrivateMode, currentPage } = useContext(AppContext);
 
   return (
-    // ✅ 내 실수 삭제: 불필요한 박스 삭제하고 오빠의 min-h-screen 순정 코드 복구
     <div className="min-h-screen p-4 flex flex-col bg-base-bg text-white">
-      {/* Basecamp 글자 삭제하고 우측 정렬된 인증 버튼만 유지 */}
+      {/* ✅ Basecamp 로고/글자 완전히 삭제, 우측 정렬된 인증 버튼만 유지 */}
       <header className="flex justify-end items-center mb-6">
         <button 
           onClick={togglePrivateMode} 
@@ -136,7 +136,11 @@ const Layout = ({ children }) => {
       
       {/* 3단계 지도 화면일 때는 A구역용 빵판 숨김 */}
       {currentPage.id !== 'bike-map' && <Breadcrumbs />}
-      {children}
+      
+      {/* ✅ 지도가 화면 바닥까지 팽창하도록 래퍼에 flex-1 추가 */}
+      <div className="flex-1 flex flex-col w-full h-full">
+        {children}
+      </div>
     </div>
   );
 };
@@ -187,14 +191,14 @@ const AppContent = () => {
       {currentPage.id === 'home' ? <Dashboard /> : (
         <>
           {currentPage.id === 'bike-map' ? (
-            /* ✅ 지도 컨테이너: flex-1을 통해 화면 하단 끝까지 꽉 차게 연장됨 */
+            /* ✅ 지도 컨테이너: flex-1을 통해 남은 공간 100% 강제 팽창 */
             <div className="flex flex-col flex-1 w-full animate-in zoom-in-95 duration-500">
               
-              {/* 3단계 네비게이션 빵판 */}
-              <div className="flex items-center gap-3 mb-4">
+              {/* ✅ 3단계 네비게이션 (오빠의 2단계 이미지 룩 유지 + 완벽한 기억 복구 로직) */}
+              <div className="flex items-center gap-3 mb-4 shrink-0">
                 <button 
                   onClick={() => {
-                    // 뒤로가기 누르면 정확히 2단계 상태로 복구 후 팝
+                    // 뒤로가기 시 2단계 상태로 완벽 복구
                     if (currentPage.customPath && currentPage.customPath.length > 0) {
                       setRegionBState(prev => ({
                         ...prev,
@@ -225,7 +229,7 @@ const AppContent = () => {
                       <button
                         onClick={() => { 
                           if (i < currentPage.customPath.length - 1) {
-                            // 중간 빵판(예: Bike Travel) 누르면 해당 단계로 복구 후 팝
+                            // 중간 빵판 누를 때 해당 단계로 정확히 복구
                             setRegionBState(prev => ({
                               ...prev,
                               step: i + 1,
@@ -243,9 +247,11 @@ const AppContent = () => {
                 </div>
               </div>
 
-              {/* 연장된 지도 뷰 */}
-              <div className="flex-1 w-full rounded-[2.5rem] overflow-hidden border border-white/5 shadow-2xl relative min-h-[500px]">
-                <BikeRouteFullMapView title={currentPage.title} />
+              {/* ✅ 지도가 진짜로 바닥 끝까지 확장되도록 absolute inset-0 적용 */}
+              <div className="flex-1 w-full relative rounded-[2.5rem] overflow-hidden border border-white/5 shadow-2xl min-h-[500px]">
+                <div className="absolute inset-0">
+                  <BikeRouteFullMapView title={currentPage.title} />
+                </div>
               </div>
             </div>
           ) : (
