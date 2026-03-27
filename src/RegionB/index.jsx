@@ -7,7 +7,8 @@ import {
   Mountain,
   Waves,
   Dumbbell,
-  ChevronLeft
+  ChevronLeft,
+  Sparkles
 } from 'lucide-react';
 
 import MemoryArchive from './MemoryArchive';
@@ -46,7 +47,7 @@ const RegionB = ({ isAdmin, data }) => {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [path, setPath] = useState([]);
 
-  // ✅ AppContext에서 pushPage 가져오기
+  // AppContext에서 pushPage 가져오기
   const { RUNNING_WORKER_URL, adminPassword, pushPage } = useContext(AppContext);
 
   const menuData = {
@@ -210,8 +211,8 @@ const RegionB = ({ isAdmin, data }) => {
                 step={step} 
                 path={path} 
                 onSelect={(routeName) => {
-                  // ✅ 핵심: App.jsx의 pushPage를 사용하여 독립된 전체 화면 페이지 호출!
-                  pushPage('bike-map', routeName, Bike);
+                  // App.jsx의 pushPage를 사용하여 전체 화면 빵판 데이터까지 같이 전송
+                  pushPage('bike-map', routeName, Bike, [...path, routeName]);
                 }} 
               />
             ) : selectedCategory === 'photos' ? (
