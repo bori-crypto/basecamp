@@ -11,6 +11,7 @@ import {
   Plus
 } from 'lucide-react';
 
+// ✅ App.jsx에서 가져다 쓸 수 있도록 export 유지!
 export const BikeRouteFullMapView = ({ title }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const routeData = {
@@ -88,8 +89,6 @@ export default function Bike({ step, path, onSelect }) {
     e.preventDefault();
     if (newRoute.trim()) { setRoutes([...routes, newRoute.trim()]); setNewRoute(''); }
   };
-
-  if (step === 3) return <BikeRouteFullMapView title={path[2]} />;
 
   return (
     <div className="flex flex-col gap-5 animate-in fade-in duration-300">
