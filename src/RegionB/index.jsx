@@ -7,11 +7,9 @@ import {
   Mountain,
   Waves,
   Dumbbell,
-  ChevronLeft,
-  Sparkles
+  ChevronLeft
 } from 'lucide-react';
 
-// 상세 페이지 및 컨텍스트 임포트
 import MemoryArchive from './MemoryArchive';
 import RunningLog from './RunningLog';
 import BikeTravel from './Bike'; 
@@ -48,7 +46,8 @@ const RegionB = ({ isAdmin, data }) => {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [path, setPath] = useState([]);
 
-  const { RUNNING_WORKER_URL, adminPassword } = useContext(AppContext);
+  // ✅ AppContext에서 pushPage 가져오기
+  const { RUNNING_WORKER_URL, adminPassword, pushPage } = useContext(AppContext);
 
   const menuData = {
     photos: {
@@ -134,15 +133,11 @@ const RegionB = ({ isAdmin, data }) => {
     } else if (targetStep === 1 && step >= 2) {
       setStep(1);
       setPath([path[0]]);
-    } else if (targetStep === 2 && step === 3) {
-      setStep(2);
-      setPath([path[0], path[1]]);
     }
   };
 
   const goBack = () => {
-    if (step === 3) jumpToStep(2);
-    else if (step === 2) jumpToStep(1);
+    if (step === 2) jumpToStep(1);
     else jumpToStep(0);
   };
 
@@ -163,10 +158,7 @@ const RegionB = ({ isAdmin, data }) => {
               <React.Fragment key={i}>
                 <span className="text-white/20 select-none">{'>'}</span>
                 <button
-                  onClick={() => {
-                    if (i === 0 && step > 1) jumpToStep(1);
-                    else if (i === 1 && step > 2) jumpToStep(2);
-                  }}
+                  onClick={() => i === 0 && step > 1 && jumpToStep(1)}
                   className={`transition-colors whitespace-pre ${i === path.length - 1 ? "text-slate-100 font-bold cursor-default" : "hover:text-slate-300 cursor-pointer"}`}
                 >
                   {p}
@@ -218,8 +210,8 @@ const RegionB = ({ isAdmin, data }) => {
                 step={step} 
                 path={path} 
                 onSelect={(routeName) => {
-                  setPath([...path, routeName]);
-                  setStep(3);
+                  // ✅ 핵심: App.jsx의 pushPage를 사용하여 독립된 전체 화면 페이지 호출!
+                  pushPage('bike-map', routeName, Bike);
                 }} 
               />
             ) : selectedCategory === 'photos' ? (
