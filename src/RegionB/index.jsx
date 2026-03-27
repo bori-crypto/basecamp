@@ -47,7 +47,7 @@ const RegionB = ({ isAdmin, data }) => {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [path, setPath] = useState([]);
 
-  // AppContext에서 pushPage 가져오기
+  // ✅ pushPage 꺼내오기
   const { RUNNING_WORKER_URL, adminPassword, pushPage } = useContext(AppContext);
 
   const menuData = {
@@ -126,6 +126,7 @@ const RegionB = ({ isAdmin, data }) => {
     setStep(2);
   };
 
+  // ✅ 3단계 배관 깔끔하게 철거
   const jumpToStep = (targetStep) => {
     if (targetStep === 0) {
       setStep(0);
@@ -211,7 +212,7 @@ const RegionB = ({ isAdmin, data }) => {
                 step={step} 
                 path={path} 
                 onSelect={(routeName) => {
-                  // App.jsx의 pushPage를 사용하여 전체 화면 빵판 데이터까지 같이 전송
+                  // ✅ App.jsx로 빵판 전체 경로와 함께 신호 전송!
                   pushPage('bike-map', routeName, Bike, [...path, routeName]);
                 }} 
               />
