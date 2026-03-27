@@ -22,7 +22,7 @@ export const BikeRouteFullMapView = ({ title }) => {
   };
 
   return (
-    <div className="relative w-full h-full min-h-[500px] overflow-hidden rounded-[2.5rem] text-slate-100 animate-in fade-in duration-700 font-sans">
+    <div className="relative w-full h-full min-h-[500px] overflow-hidden rounded-[2.5rem] text-slate-100 animate-in fade-in duration-700 font-sans shadow-[0_0_40px_-10px_rgba(0,0,0,0.5)]">
       <div className="absolute inset-0 bg-slate-900 z-0">
         <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-500/20 via-transparent to-transparent" />
         <svg className="w-full h-full opacity-20" viewBox="0 0 800 600" preserveAspectRatio="none">
@@ -68,6 +68,12 @@ export const BikeRouteFullMapView = ({ title }) => {
             </div>
           )}
         </div>
+      </div>
+      
+      {/* 우측 하단 줌 컨트롤 */}
+      <div className="absolute bottom-6 right-6 z-10 flex flex-col gap-2 opacity-30 pointer-events-none">
+        <div className="w-9 h-9 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl flex items-center justify-center font-black text-[10px]">+</div>
+        <div className="w-9 h-9 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl flex items-center justify-center font-black text-[10px]">-</div>
       </div>
     </div>
   );
