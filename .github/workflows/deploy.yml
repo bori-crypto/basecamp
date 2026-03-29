@@ -25,3 +25,6 @@ jobs:
       # 2. 러닝 로그 브릿지 배포 (새로운 wrangler.run.toml 사용)
       - name: Deploy Running Log Bridge
         run: npx wrangler deploy --config wrangler.run.toml
+     # 3. 바이크 API 워커 배포 (새로 만든 D1 워커)
+      - name: Deploy Bike API Worker
+        run: npx wrangler deploy --config wrangler.bike.toml
