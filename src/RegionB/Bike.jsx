@@ -6,20 +6,21 @@ import {
 import { AppContext } from '../App';
 
 export const BikeRouteFullMapView = ({ title }) => {
-  // 사령부(App.jsx)에서 무전기와 권한 정보 가져오기
   const { BIKE_WORKER_URL, isPrivateMode, adminPassword } = useContext(AppContext);
   
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [mapType, setMapType] = useState('SATELLITE'); // 지도 모드 상태 (SATELLITE or NORMAL)
+  const [mapType, setMapType] = useState('SATELLITE'); 
   const [routeData, setRouteData] = useState(null);
   
-  // 지도 객체 담을 그릇
+  // ✅ 쉼표 버그 해결을 위한 임시 텍스트 저장소
+  const [tempWaypoints, setTempWaypoints] = useState('');
+  
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
   const polylineInstance = useRef(null);
 
-  // 1. D1 DB에서 해당 코스 데이터 불러오기
+  // 1. D1 DB 로드
   useEffect(() => {
     if (!BIKE_WORKER_URL) return;
     fetch(BIKE_WORKER_URL)
@@ -33,59 +34,64 @@ export const BikeRouteFullMapView = ({ title }) => {
             path_data: typeof found.path_data === 'string' ? JSON.parse(found.path_data || '[]') : []
           });
         } else {
-          // DB에 없는 새 코스면 빈 껍데기 준비
           setRouteData({ title: title, duration: '', distance: '', waypoints: [], memo: '', path_data: [] });
         }
       })
       .catch(err => console.error("DB 로드 실패:", err));
   }, [BIKE_WORKER_URL, title]);
 
-  // 2. 네이버 지도 초기화 및 GPX 경로 렌더링
+  // 2. 네이버 지도 초기화 및 렌더링
   useEffect(() => {
     if (!window.naver || !mapRef.current || !routeData) return;
 
-    // 지도 뼈대 만들기
     if (!mapInstance.current) {
-      mapInstance.current = new window.naver.maps.Map(mapRef.current, {
-        center: new window.naver.maps.LatLng(36.3504, 127.3845), // 기본 센터 (대전)
-        zoom: 7,
-        mapTypeId: window.naver.maps.MapTypeId[mapType],
-        disableKineticPan: false,
-      });
+      try {
+        mapInstance.current = new window.naver.maps.Map(mapRef.current, {
+          center: new window.naver.maps.LatLng(36.3504, 127.3845),
+          zoom: 7,
+          mapTypeId: window.naver.maps.MapTypeId[mapType],
+          disableKineticPan: false,
+        });
+      } catch (error) {
+        console.error("네이버 지도 초기화 에러 (API 설정 확인 필요):", error);
+      }
     }
 
-    // 기존 선 지우기
     if (polylineInstance.current) {
       polylineInstance.current.setMap(null);
     }
 
-    // 새로운 GPX 선 그리기
-    if (routeData.path_data && routeData.path_data.length > 0) {
+    if (routeData.path_data && routeData.path_data.length > 0 && mapInstance.current) {
       const path = routeData.path_data.map(p => new window.naver.maps.LatLng(p.lat, p.lng));
       polylineInstance.current = new window.naver.maps.Polyline({
         map: mapInstance.current,
         path: path,
-        strokeColor: '#facc15', // 노란색 (위성 지도에서 제일 잘 보임)
+        strokeColor: '#facc15',
         strokeWeight: 5,
         strokeOpacity: 0.9,
         strokeLineJoin: 'round',
       });
 
-      // 경로가 한눈에 보이게 줌/이동
       const bounds = new window.naver.maps.LatLngBounds();
       path.forEach(p => bounds.extend(p));
       mapInstance.current.fitBounds(bounds, { margin: 50 });
     }
-  }, [routeData]); // routeData가 바뀔 때마다 실행 (mapType은 제외, 아래서 따로 처리)
+  }, [routeData]); 
 
-  // 3. 위성/일반 지도 토글 처리
+  // 3. 위성/일반 지도 토글
   useEffect(() => {
     if (mapInstance.current && window.naver) {
       mapInstance.current.setMapTypeId(window.naver.maps.MapTypeId[mapType]);
     }
   }, [mapType]);
 
-  // 4. GPX 드래그 앤 드롭 업로드 파싱 로직
+  // 4. 편집 모드 진입 시 임시 텍스트 세팅
+  const handleEditClick = () => {
+    setTempWaypoints(routeData.waypoints.join(', '));
+    setIsEditing(true);
+  };
+
+  // 5. GPX 드롭 처리
   const handleDrop = (e) => {
     e.preventDefault();
     if (!isEditing) return;
@@ -112,7 +118,7 @@ export const BikeRouteFullMapView = ({ title }) => {
 
       if (newPath.length > 0) {
         setRouteData(prev => ({ ...prev, path_data: newPath }));
-        alert(`GPX 파일 파싱 완료! (좌표 ${newPath.length}개)`);
+        alert(`GPX 파싱 완료! (좌표 ${newPath.length}개)`);
       } else {
         alert("GPX 파일에서 경로(trkpt)를 찾을 수 없습니다.");
       }
@@ -122,17 +128,22 @@ export const BikeRouteFullMapView = ({ title }) => {
 
   const handleDragOver = (e) => e.preventDefault();
 
-  // 5. 변경사항 D1 DB에 저장 로직
+  // 6. 저장 로직 (이때 쉼표로 배열을 자름)
   const handleSave = async () => {
     try {
-      const method = routeData.id ? 'PUT' : 'POST';
+      const finalWaypoints = tempWaypoints.split(',').map(s => s.trim()).filter(Boolean);
+      const dataToSave = { ...routeData, waypoints: finalWaypoints };
+
+      const method = dataToSave.id ? 'PUT' : 'POST';
       const res = await fetch(BIKE_WORKER_URL, {
         method,
         headers: { 'Content-Type': 'application/json', 'X-Admin-Password': adminPassword },
-        body: JSON.stringify(routeData)
+        body: JSON.stringify(dataToSave)
       });
+      
       if (res.ok) {
         alert('저장 완료! 💾');
+        setRouteData(dataToSave);
         setIsEditing(false);
       } else {
         alert('저장 실패 (권한 부족)');
@@ -150,10 +161,8 @@ export const BikeRouteFullMapView = ({ title }) => {
       onDrop={handleDrop}
       onDragOver={handleDragOver}
     >
-      {/* 진짜 네이버 지도가 그려질 배경 (기존 가짜 SVG 삭제) */}
       <div className="absolute inset-0 bg-slate-900 z-0" ref={mapRef} />
 
-      {/* GPX 드래그 안내 오버레이 (수정 모드일 때만) */}
       {isEditing && (
         <div className="absolute inset-0 z-[5] pointer-events-none flex items-center justify-center bg-black/20 backdrop-blur-[2px] border-4 border-dashed border-indigo-500/50 rounded-[2.5rem] m-2">
           <div className="bg-slate-900/80 px-6 py-4 rounded-2xl flex items-center gap-3 shadow-2xl">
@@ -163,7 +172,6 @@ export const BikeRouteFullMapView = ({ title }) => {
         </div>
       )}
 
-      {/* 우측 상단 컨트롤 패널 (지도 토글 & 저장) */}
       <div className="absolute top-6 right-6 z-20 flex gap-2">
         <button 
           onClick={() => setMapType(prev => prev === 'NORMAL' ? 'SATELLITE' : 'NORMAL')}
@@ -174,7 +182,7 @@ export const BikeRouteFullMapView = ({ title }) => {
         </button>
         {isPrivateMode && (
           <button 
-            onClick={isEditing ? handleSave : () => setIsEditing(true)}
+            onClick={isEditing ? handleSave : handleEditClick}
             className={`px-4 py-2 rounded-xl flex items-center gap-2 text-[11px] font-black uppercase tracking-wider transition-colors shadow-lg border backdrop-blur-md ${isEditing ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/30' : 'bg-indigo-500/20 border-indigo-500/50 text-indigo-400 hover:bg-indigo-500/30'}`}
           >
             {isEditing ? <><Save size={14} /> 저장하기</> : <><Edit2 size={14} /> 코스 수정</>}
@@ -182,7 +190,6 @@ export const BikeRouteFullMapView = ({ title }) => {
         )}
       </div>
 
-      {/* 좌측 상단 미션 브리핑 정보창 (오빠의 원본 UI 100% 유지) */}
       <div className="relative z-10 p-6 h-full pointer-events-none">
         <div className={`w-full max-w-[270px] bg-slate-950/80 backdrop-blur-2xl border border-white/10 rounded-[2rem] p-5 shadow-2xl pointer-events-auto transition-all duration-500 ${isCollapsed ? 'max-h-24' : 'max-h-[90%] overflow-y-auto custom-scrollbar'}`}>
           <div className="cursor-pointer select-none" onClick={() => !isEditing && setIsCollapsed(!isCollapsed)}>
@@ -223,8 +230,8 @@ export const BikeRouteFullMapView = ({ title }) => {
                   <div className="absolute left-[11px] top-3 bottom-3 w-[1px] bg-indigo-500/20" />
                   {isEditing ? (
                     <textarea 
-                      value={routeData.waypoints.join(', ')} 
-                      onChange={e => setRouteData({...routeData, waypoints: e.target.value.split(',').map(s=>s.trim()).filter(Boolean)})}
+                      value={tempWaypoints} 
+                      onChange={e => setTempWaypoints(e.target.value)}
                       placeholder="쉼표(,)로 구분해 입력 (예: 해인사, 독일마을)"
                       className="relative z-10 w-full bg-black/50 border border-white/20 text-xs font-bold text-slate-300 p-2 rounded-xl outline-none resize-none h-24"
                     />
@@ -259,7 +266,6 @@ export default function Bike({ step, path, onSelect }) {
   const [routes, setRoutes] = useState([]);
   const [newRoute, setNewRoute] = useState('');
 
-  // 2단계 리스트: D1 DB에서 전체 목록 가져오기
   useEffect(() => {
     if (!BIKE_WORKER_URL) return;
     fetch(BIKE_WORKER_URL)
@@ -272,7 +278,6 @@ export default function Bike({ step, path, onSelect }) {
     e.preventDefault();
     if (!newRoute.trim() || !isPrivateMode) return;
     
-    // 워커로 POST 날려서 DB에 먼저 생성
     try {
       const res = await fetch(BIKE_WORKER_URL, {
         method: 'POST',
@@ -280,7 +285,6 @@ export default function Bike({ step, path, onSelect }) {
         body: JSON.stringify({ title: newRoute.trim() })
       });
       if (res.ok) {
-        // 생성 성공하면 리스트 다시 불러오기
         const updated = await fetch(BIKE_WORKER_URL).then(r => r.json());
         setRoutes(updated);
         setNewRoute('');
