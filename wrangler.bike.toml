@@ -1,0 +1,13 @@
+name = "basecamp-bike-api"
+main = "worker/bike-api.js"
+compatibility_date = "2026-03-29"
+
+# D1 데이터베이스 연결 (worker에서 env.DB 로 접근 가능해짐)
+[[d1_databases]]
+binding = "DB"
+database_name = "bike-route-korea-naver"
+database_id = "f0887f66-7481-4ad1-a508-ccbe151607fb"
+
+[vars]
+# 쓰기/수정(POST, PUT) 권한을 통제하기 위한 관리자 암호
+ADMIN_SECURE = "yh4181!@"
