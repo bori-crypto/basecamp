@@ -24,6 +24,9 @@ export const AppProvider = ({ children }) => {
 
   const WORKER_URL = 'https://sparkling-credit-38ce.borimundi.workers.dev';
   const RUNNING_WORKER_URL = 'https://basecamp-run-bridge.borimundi.workers.dev';
+  
+  // ✅ 추가: 방금 배포한 바이크 API 워커 주소 연결
+  const BIKE_WORKER_URL = 'https://basecamp-bike-api.borimundi.workers.dev';
 
   const fetchDashboardData = async (password = adminPassword) => {
     try {
@@ -91,6 +94,7 @@ export const AppProvider = ({ children }) => {
       isPrivateMode, togglePrivateMode, history, currentPage,
       pushPage, popPage, jumpTo, realTimeData,
       adminPassword, RUNNING_WORKER_URL,
+      BIKE_WORKER_URL, // ✅ 추가: B구역이 워커와 통신할 수 있게 무전기 증설
       regionBState, setRegionBState // ✅ B구역 메모리 공급
     }}>
       {children}
