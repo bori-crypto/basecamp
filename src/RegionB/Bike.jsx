@@ -14,7 +14,6 @@ export const BikeRouteFullMapView = ({ title }) => {
   const [routeData, setRouteData] = useState(null);
   const [isMapEngineMissing, setIsMapEngineMissing] = useState(false);
   
-  // 쉼표 버그 해결을 위한 임시 텍스트 저장소
   const [tempWaypoints, setTempWaypoints] = useState('');
   
   const mapRef = useRef(null);
@@ -41,20 +40,19 @@ export const BikeRouteFullMapView = ({ title }) => {
       .catch(err => console.error("DB 로드 실패:", err));
   }, [BIKE_WORKER_URL, title]);
 
-  // 2. 네이버 지도 초기화 및 렌더링 (✅ 방어막 추가)
+  // 2. 네이버 지도 초기화 및 렌더링 (🔥 리액트 유령 메모리 버그 픽스)
   useEffect(() => {
     if (!mapRef.current || !routeData) return;
     
-    // 네이버 엔진이 거부(null)되었을 경우 실행 차단 (앱 기절 방지)
     if (!window.naver || !window.naver.maps) {
-      console.warn("네이버 지도 엔진이 로드되지 않았습니다. (인증 실패 또는 로딩 중)");
+      console.warn("네이버 지도 엔진 연결 대기 중...");
       setIsMapEngineMissing(true);
       return;
     }
-
     setIsMapEngineMissing(false);
 
-    if (!mapInstance.current) {
+    // ✅ 핵심: mapInstance가 있더라도, 실제 DOM 상자가 비어있으면 무조건 새로 그림!
+    if (!mapInstance.current || mapRef.current.childNodes.length === 0) {
       try {
         mapInstance.current = new window.naver.maps.Map(mapRef.current, {
           center: new window.naver.maps.LatLng(36.3504, 127.3845),
@@ -67,6 +65,7 @@ export const BikeRouteFullMapView = ({ title }) => {
       }
     }
 
+    // 폴리라인 초기화 (경로 그리기)
     if (polylineInstance.current) {
       polylineInstance.current.setMap(null);
     }
@@ -87,25 +86,23 @@ export const BikeRouteFullMapView = ({ title }) => {
         path.forEach(p => bounds.extend(p));
         mapInstance.current.fitBounds(bounds, { margin: 50 });
       } catch (error) {
-        console.error("경로 렌더링 에러 (지도 엔진 오류):", error);
+        console.error("경로 렌더링 에러:", error);
       }
     }
   }, [routeData, mapType]); 
 
-  // 3. 위성/일반 지도 토글 (✅ 방어막 추가)
+  // 3. 위성/일반 지도 토글
   useEffect(() => {
     if (mapInstance.current && window.naver && window.naver.maps) {
       mapInstance.current.setMapTypeId(window.naver.maps.MapTypeId[mapType]);
     }
   }, [mapType]);
 
-  // 4. 편집 모드 진입 시 임시 텍스트 세팅
   const handleEditClick = () => {
     setTempWaypoints(routeData.waypoints.join(', '));
     setIsEditing(true);
   };
 
-  // 5. GPX 드롭 처리
   const handleDrop = (e) => {
     e.preventDefault();
     if (!isEditing) return;
@@ -142,7 +139,6 @@ export const BikeRouteFullMapView = ({ title }) => {
 
   const handleDragOver = (e) => e.preventDefault();
 
-  // 6. 저장 로직
   const handleSave = async () => {
     try {
       const finalWaypoints = tempWaypoints.split(',').map(s => s.trim()).filter(Boolean);
@@ -171,15 +167,13 @@ export const BikeRouteFullMapView = ({ title }) => {
 
   return (
     <div 
-      // 고정 배경색(bg-slate-900) 제거 및 투명 글래스모피즘 적용
       className="relative w-full h-full overflow-hidden rounded-[2.5rem] text-slate-100 animate-in fade-in duration-700 font-sans shadow-2xl bg-white/5 backdrop-blur-xl border border-white/10"
       onDrop={handleDrop}
       onDragOver={handleDragOver}
     >
-      {/* 진짜 네이버 지도가 렌더링될 곳 */}
-      <div className="absolute inset-0 z-0" ref={mapRef} />
+      {/* ✅ 지도 상자: w-full h-full을 강제 주입해서 크기 0으로 찌그러지는 현상 완벽 차단 */}
+      <div className="absolute inset-0 z-0 w-full h-full" ref={mapRef} />
 
-      {/* ✅ 네이버 지도가 거부(null)되었을 때 띄워줄 에러 안내 화면 (지도 위에 덮임) */}
       {isMapEngineMissing && (
         <div className="absolute inset-0 z-[1] flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="text-center animate-pulse flex flex-col items-center p-8 bg-slate-900/60 rounded-3xl border border-white/10 shadow-2xl">
