@@ -37,14 +37,11 @@ export default {
       if (request.method === "GET") {
         const id = url.searchParams.get("id");
         
-        // 특정 코스 1개만 조회 (지도 그릴 때)
         if (id) {
           const stmt = env.DB.prepare("SELECT * FROM bike_routes WHERE id = ?").bind(id);
           const result = await stmt.first();
           return new Response(JSON.stringify(result || {}), { headers: corsHeaders });
-        } 
-        // 전체 코스 목록 조회 (2단계 리스트 띄울 때)
-        else {
+        } else {
           const stmt = env.DB.prepare("SELECT * FROM bike_routes ORDER BY created_at DESC");
           const { results } = await stmt.all();
           return new Response(JSON.stringify(results), { headers: corsHeaders });
@@ -67,7 +64,7 @@ export default {
           body.distance || "",
           JSON.stringify(body.waypoints || []),
           body.memo || "",
-          body.path_data || "[]" // 복잡한 GPX 좌표 JSON 문자열
+          JSON.stringify(body.path_data || []) // ✅ FIX: 거대한 배열을 문자열로 완벽히 포장해서 저장
         );
         
         await stmt.run();
@@ -93,7 +90,7 @@ export default {
           body.distance,
           JSON.stringify(body.waypoints || []),
           body.memo,
-          body.path_data,
+          JSON.stringify(body.path_data || []), // ✅ FIX: 업데이트할 때도 문자열로 확실히 포장
           body.id
         );
         
