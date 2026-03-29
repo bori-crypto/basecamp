@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import {
   MapPin, Navigation, Calendar, Flag, ChevronDown,
-  ChevronUp, Plus, Edit2, Save, Layers, UploadCloud
+  ChevronUp, Plus, Edit2, Save, Layers, UploadCloud, AlertTriangle
 } from 'lucide-react';
 import { AppContext } from '../App';
 
@@ -13,7 +13,7 @@ export const BikeRouteFullMapView = ({ title }) => {
   const [mapType, setMapType] = useState('SATELLITE'); 
   const [routeData, setRouteData] = useState(null);
   
-  // ✅ 쉼표 버그 해결을 위한 임시 텍스트 저장소
+  // 쉼표 버그 해결을 위한 임시 텍스트 저장소
   const [tempWaypoints, setTempWaypoints] = useState('');
   
   const mapRef = useRef(null);
@@ -40,9 +40,15 @@ export const BikeRouteFullMapView = ({ title }) => {
       .catch(err => console.error("DB 로드 실패:", err));
   }, [BIKE_WORKER_URL, title]);
 
-  // 2. 네이버 지도 초기화 및 렌더링
+  // 2. 네이버 지도 초기화 및 렌더링 (✅ 방어막 추가)
   useEffect(() => {
-    if (!window.naver || !mapRef.current || !routeData) return;
+    if (!mapRef.current || !routeData) return;
+    
+    // 네이버 엔진이 거부(null)되었을 경우 실행 차단 (앱 기절 방지)
+    if (!window.naver || !window.naver.maps) {
+      console.warn("네이버 지도 엔진이 로드되지 않았습니다. (인증 실패 또는 로딩 중)");
+      return;
+    }
 
     if (!mapInstance.current) {
       try {
@@ -53,7 +59,7 @@ export const BikeRouteFullMapView = ({ title }) => {
           disableKineticPan: false,
         });
       } catch (error) {
-        console.error("네이버 지도 초기화 에러 (API 설정 확인 필요):", error);
+        console.error("네이버 지도 초기화 에러:", error);
       }
     }
 
@@ -62,25 +68,29 @@ export const BikeRouteFullMapView = ({ title }) => {
     }
 
     if (routeData.path_data && routeData.path_data.length > 0 && mapInstance.current) {
-      const path = routeData.path_data.map(p => new window.naver.maps.LatLng(p.lat, p.lng));
-      polylineInstance.current = new window.naver.maps.Polyline({
-        map: mapInstance.current,
-        path: path,
-        strokeColor: '#facc15',
-        strokeWeight: 5,
-        strokeOpacity: 0.9,
-        strokeLineJoin: 'round',
-      });
+      try {
+        const path = routeData.path_data.map(p => new window.naver.maps.LatLng(p.lat, p.lng));
+        polylineInstance.current = new window.naver.maps.Polyline({
+          map: mapInstance.current,
+          path: path,
+          strokeColor: '#facc15',
+          strokeWeight: 5,
+          strokeOpacity: 0.9,
+          strokeLineJoin: 'round',
+        });
 
-      const bounds = new window.naver.maps.LatLngBounds();
-      path.forEach(p => bounds.extend(p));
-      mapInstance.current.fitBounds(bounds, { margin: 50 });
+        const bounds = new window.naver.maps.LatLngBounds();
+        path.forEach(p => bounds.extend(p));
+        mapInstance.current.fitBounds(bounds, { margin: 50 });
+      } catch (error) {
+        console.error("경로 렌더링 에러 (지도 엔진 오류):", error);
+      }
     }
   }, [routeData]); 
 
-  // 3. 위성/일반 지도 토글
+  // 3. 위성/일반 지도 토글 (✅ 방어막 추가)
   useEffect(() => {
-    if (mapInstance.current && window.naver) {
+    if (mapInstance.current && window.naver && window.naver.maps) {
       mapInstance.current.setMapTypeId(window.naver.maps.MapTypeId[mapType]);
     }
   }, [mapType]);
@@ -128,7 +138,7 @@ export const BikeRouteFullMapView = ({ title }) => {
 
   const handleDragOver = (e) => e.preventDefault();
 
-  // 6. 저장 로직 (이때 쉼표로 배열을 자름)
+  // 6. 저장 로직
   const handleSave = async () => {
     try {
       const finalWaypoints = tempWaypoints.split(',').map(s => s.trim()).filter(Boolean);
@@ -157,11 +167,21 @@ export const BikeRouteFullMapView = ({ title }) => {
 
   return (
     <div 
-      className="relative w-full h-full min-h-[500px] overflow-hidden rounded-[2.5rem] text-slate-100 animate-in fade-in duration-700 font-sans shadow-[0_0_40px_-10px_rgba(0,0,0,0.5)]"
+      className="relative w-full h-full min-h-[500px] overflow-hidden rounded-[2.5rem] text-slate-100 animate-in fade-in duration-700 font-sans shadow-[0_0_40px_-10px_rgba(0,0,0,0.5)] bg-slate-900"
       onDrop={handleDrop}
       onDragOver={handleDragOver}
     >
-      <div className="absolute inset-0 bg-slate-900 z-0" ref={mapRef} />
+      {/* 진짜 네이버 지도가 렌더링될 곳 */}
+      <div className="absolute inset-0 z-0 flex items-center justify-center" ref={mapRef}>
+        {/* ✅ 네이버 지도가 거부(null)되었을 때 띄워줄 에러 안내 화면 */}
+        {(!window.naver || !window.naver.maps) && (
+          <div className="text-center animate-pulse opacity-50 flex flex-col items-center">
+            <AlertTriangle size={48} className="mb-4 text-slate-600" />
+            <p className="text-slate-400 font-black tracking-widest uppercase text-sm">지도 엔진 연결 대기 중...</p>
+            <p className="text-xs text-slate-500 mt-2">네이버 클라우드 API 인증 상태를 확인해 주세요.</p>
+          </div>
+        )}
+      </div>
 
       {isEditing && (
         <div className="absolute inset-0 z-[5] pointer-events-none flex items-center justify-center bg-black/20 backdrop-blur-[2px] border-4 border-dashed border-indigo-500/50 rounded-[2.5rem] m-2">
