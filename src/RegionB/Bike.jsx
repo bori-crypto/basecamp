@@ -40,7 +40,7 @@ export const BikeRouteFullMapView = ({ title }) => {
       .catch(err => console.error("DB 로드 실패:", err));
   }, [BIKE_WORKER_URL, title]);
 
-  // 2. 네이버 지도 초기화 및 렌더링 (🔥 리액트 유령 메모리 버그 픽스)
+  // 2. 네이버 지도 초기화 및 렌더링 (🔥 리액트 유령 메모리 + 리사이즈 버그 완벽 픽스)
   useEffect(() => {
     if (!mapRef.current || !routeData) return;
     
@@ -60,6 +60,15 @@ export const BikeRouteFullMapView = ({ title }) => {
           mapTypeId: window.naver.maps.MapTypeId[mapType],
           disableKineticPan: false,
         });
+
+        // 애니메이션 도중 지도가 크기를 0으로 인식하는 문제 해결 (충격 요법)
+        setTimeout(() => {
+          if (mapInstance.current) {
+            window.dispatchEvent(new Event('resize'));
+            mapInstance.current.autoResize();
+          }
+        }, 300);
+
       } catch (error) {
         console.error("네이버 지도 초기화 에러:", error);
       }
@@ -84,7 +93,14 @@ export const BikeRouteFullMapView = ({ title }) => {
 
         const bounds = new window.naver.maps.LatLngBounds();
         path.forEach(p => bounds.extend(p));
-        mapInstance.current.fitBounds(bounds, { margin: 50 });
+        
+        // 렌더링 안정성을 위해 약간 지연 후 포커싱
+        setTimeout(() => {
+          if (mapInstance.current) {
+            mapInstance.current.fitBounds(bounds, { margin: 50 });
+          }
+        }, 400);
+
       } catch (error) {
         console.error("경로 렌더링 에러:", error);
       }
@@ -167,11 +183,12 @@ export const BikeRouteFullMapView = ({ title }) => {
 
   return (
     <div 
-      className="relative w-full h-full overflow-hidden rounded-[2.5rem] text-slate-100 animate-in fade-in duration-700 font-sans shadow-2xl bg-white/5 backdrop-blur-xl border border-white/10"
+      // ✅ 붕괴 방지: min-h-[600px]와 flex-1 추가하여 상자 크기 빵빵하게 유지
+      className="relative flex-1 w-full h-full min-h-[600px] overflow-hidden rounded-[2.5rem] text-slate-100 animate-in fade-in duration-700 font-sans shadow-2xl bg-[#0f172a] border border-white/10"
       onDrop={handleDrop}
       onDragOver={handleDragOver}
     >
-      {/* ✅ 지도 상자: w-full h-full을 강제 주입해서 크기 0으로 찌그러지는 현상 완벽 차단 */}
+      {/* 🗺️ 1층 (바닥): 네이버 지도 상자 (무조건 부모 크기 100% 채움) */}
       <div className="absolute inset-0 z-0 w-full h-full" ref={mapRef} />
 
       {isMapEngineMissing && (
@@ -193,6 +210,7 @@ export const BikeRouteFullMapView = ({ title }) => {
         </div>
       )}
 
+      {/* 🎛️ 2층 (공중 우측): 토글 및 저장 버튼 */}
       <div className="absolute top-6 right-6 z-20 flex gap-2">
         <button 
           onClick={() => setMapType(prev => prev === 'NORMAL' ? 'SATELLITE' : 'NORMAL')}
@@ -211,8 +229,9 @@ export const BikeRouteFullMapView = ({ title }) => {
         )}
       </div>
 
-      <div className="relative z-10 p-6 h-full pointer-events-none flex flex-col justify-end md:justify-start">
-        <div className={`w-full max-w-[270px] bg-slate-950/60 backdrop-blur-2xl border border-white/10 rounded-[2rem] p-5 shadow-2xl pointer-events-auto transition-all duration-500 ${isCollapsed ? 'max-h-24' : 'max-h-[90%] overflow-y-auto custom-scrollbar'}`}>
+      {/* 📊 2층 (공중 좌측): 요약창 (밀림 방지를 위해 absolute top-6 left-6 으로 고정) */}
+      <div className="absolute top-6 left-6 z-20 max-h-[calc(100%-3rem)] pointer-events-none flex flex-col">
+        <div className={`w-[270px] bg-slate-950/80 backdrop-blur-2xl border border-white/10 rounded-[2rem] p-5 shadow-2xl pointer-events-auto transition-all duration-500 ${isCollapsed ? 'max-h-24' : 'max-h-full overflow-y-auto custom-scrollbar'}`}>
           <div className="cursor-pointer select-none" onClick={() => !isEditing && setIsCollapsed(!isCollapsed)}>
             <div className="flex items-start justify-between">
               <div className="flex items-start gap-2.5">
