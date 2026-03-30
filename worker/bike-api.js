@@ -1,3 +1,7 @@
+/**
+ * Basecamp Bike API Worker - 최종 완성본
+ * 네이버 Directions 15 인증 및 D1 DB 연동 포함
+ */
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -8,54 +12,45 @@ export default {
       "Content-Type": "application/json"
     };
 
+    // 1. CORS 대응 (Preflight)
     if (request.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
     try {
-      // ✅ [Directions 15] 이륜차 최적화 경로 탐색
-      if (request.method === "POST" && (url.pathname === "/direction" || url.pathname.endsWith("/direction"))) {
+      // ✅ [길찾기 로직] 네이버 Directions 15 호출
+      if (request.method === "POST" && url.pathname.includes("direction")) {
         const { start, goal, waypoints } = await request.json();
-
-        // 🚨 환경변수 방어 로직 (대문자, 공백, 언더바 모두 대응)
-        const clientId = env.NAVER_CLIENT_ID || env['Naver_Client ID'] || env.Naver_Client_ID;
-        const clientSecret = env.NAVER_CLIENT_SECRET || env['Naver_Client_Secret'] || env.Naver_Client_Secret;
+        
+        const clientId = (env.NAVER_CLIENT_ID || "").trim();
+        const clientSecret = (env.NAVER_CLIENT_SECRET || "").trim();
 
         if (!clientId || !clientSecret) {
-          return new Response(JSON.stringify({ 
-            error: "CONFIG_ERROR", 
-            detail: "워커의 Secret 설정이 안 보여! Cloudflare 대시보드에서 'Deploy'를 눌렀는지 확인해 줘." 
-          }), { status: 500, headers: corsHeaders });
+          return new Response(JSON.stringify({ error: "CONFIG_ERROR", detail: "Secret 키를 확인해 줘!" }), { status: 500, headers: corsHeaders });
         }
 
-        // 네이버 공식 이륜차 회피 옵션: traavoidcaronly
+        // URL 조립 (이륜차 전용 옵션)
         let naverUrl = `https://naveropenapi.apigw.ntruss.com/map-direction-15/v1/driving?start=${start}&goal=${goal}&option=traavoidcaronly`;
-        if (waypoints && waypoints.trim() !== "") {
-          naverUrl += `&waypoints=${encodeURIComponent(waypoints)}`;
-        }
+        if (waypoints) naverUrl += `&waypoints=${encodeURIComponent(waypoints)}`;
 
         const naverRes = await fetch(naverUrl, {
           method: "GET",
-          headers: {
-            "X-NCP-APIGW-API-KEY-ID": clientId.trim(),
-            "X-NCP-APIGW-API-KEY": clientSecret.trim(),
-            // 🔥 [결정적 한 방] 네이버에 등록한 주소 중 하나를 Referer로 강제 고정
+          headers: { 
+            "X-NCP-APIGW-API-KEY-ID": clientId, 
+            "X-NCP-APIGW-API-KEY": clientSecret,
+            // 🔥 [결정적 한 방] 네이버 콘솔에 등록된 대표 주소를 신분증으로 제시
             "Referer": "https://bori.pages.dev/" 
           }
         });
 
-        const naverData = await naverRes.json();
-
+        const data = await naverRes.json();
         if (!naverRes.ok) {
-          return new Response(JSON.stringify({
-            error: "NAVER_API_ERROR",
-            detail: naverData.message || naverData.errorMessage || "인증 거절됨. Client ID/Secret 값을 다시 복사해서 넣어봐!"
-          }), { status: naverRes.status, headers: corsHeaders });
+          return new Response(JSON.stringify({ error: "NAVER_FAIL", detail: data.message || "인증 거절" }), { status: naverRes.status, headers: corsHeaders });
         }
-
-        return new Response(JSON.stringify(naverData), { headers: corsHeaders });
+        return new Response(JSON.stringify(data), { headers: corsHeaders });
       }
 
-      // --- DB CRUD 로직 (생략 없이 유지) ---
+      // ✅ [DB 로직] 데이터베이스 CRUD
       const checkAuth = (req) => req.headers.get("X-Admin-Password") === env.ADMIN_SECURE;
+
       if (request.method === "GET") {
         const id = url.searchParams.get("id");
         const stmt = id ? env.DB.prepare("SELECT * FROM bike_routes WHERE id = ?").bind(id) : env.DB.prepare("SELECT * FROM bike_routes ORDER BY created_at DESC");
@@ -84,8 +79,9 @@ export default {
       }
 
       return new Response("Not Found", { status: 404, headers: corsHeaders });
+
     } catch (err) {
-      return new Response(JSON.stringify({ error: "WORKER_ERROR", detail: err.message }), { status: 500, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "CRASH", detail: err.message }), { status: 500, headers: corsHeaders });
     }
   }
 };
