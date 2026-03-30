@@ -64,7 +64,6 @@ export const BikeRouteFullMapView = ({ title }) => {
     }
     setIsMapEngineMissing(false);
 
-    // DOM 상자가 비어있으면 무조건 새로 그림
     if (!mapInstance.current || mapRef.current.childNodes.length === 0) {
       try {
         mapInstance.current = new window.naver.maps.Map(mapRef.current, {
@@ -88,7 +87,7 @@ export const BikeRouteFullMapView = ({ title }) => {
         polylineInstance.current = new window.naver.maps.Polyline({
           map: mapInstance.current,
           path: path,
-          strokeColor: '#ccff00', // 야간 시인성 높은 형광 라임색
+          strokeColor: '#ccff00',
           strokeWeight: 8,
           strokeOpacity: 0.9,
           strokeLineJoin: 'round',
@@ -104,14 +103,12 @@ export const BikeRouteFullMapView = ({ title }) => {
     }
   }, [routeData, mapType]); 
 
-  // 지도 타입 토글
   useEffect(() => {
     if (mapInstance.current && window.naver && window.naver.maps) {
       mapInstance.current.setMapTypeId(window.naver.maps.MapTypeId[mapType]);
     }
   }, [mapType]);
 
-  // GPX & KML 통합 파일 첨부
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -198,10 +195,8 @@ export const BikeRouteFullMapView = ({ title }) => {
   return (
     <div className="relative w-full h-full overflow-hidden rounded-[2.5rem] text-slate-100 animate-in fade-in duration-700 font-sans shadow-2xl bg-[#0f172a] border border-white/10">
       
-      {/* 지도 컨테이너 */}
       <div className="absolute inset-0 z-0 w-full h-full" ref={mapRef} />
 
-      {/* 에러 방어막 */}
       {isMapEngineMissing && (
         <div className="absolute inset-0 z-[1] flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="text-center animate-pulse flex flex-col items-center p-8 bg-slate-900/60 rounded-3xl border border-white/10 shadow-2xl">
@@ -211,7 +206,6 @@ export const BikeRouteFullMapView = ({ title }) => {
         </div>
       )}
 
-      {/* 우측 상단 토글 버튼 (기준점) */}
       <div className="absolute top-6 right-6 z-20 flex gap-2">
         <button 
           onClick={() => setMapType(prev => prev === 'NORMAL' ? 'SATELLITE' : 'NORMAL')}
@@ -222,7 +216,6 @@ export const BikeRouteFullMapView = ({ title }) => {
         </button>
       </div>
 
-      {/* 좌측 상단 요약창 (애니메이션 롤업 패널) */}
       <div className="absolute top-6 left-6 z-20 flex flex-col pointer-events-none">
         <div className={`pointer-events-auto bg-slate-900/80 backdrop-blur-xl border border-white/10 shadow-2xl flex flex-col transition-all duration-500 overflow-hidden ${
           isCollapsed 
@@ -230,37 +223,52 @@ export const BikeRouteFullMapView = ({ title }) => {
             : 'w-[calc(100vw-3rem)] md:w-96 max-h-[85vh] rounded-3xl'
         }`}>
           
-          {/* 패널 헤더 (클릭 시 접기/펴기) */}
+          {/* ✅ 헤더 영역: 어드민 버튼을 헤더 안으로 안전하게 편입 */}
           <div 
             className={`flex items-center justify-between shrink-0 transition-all ${isCollapsed ? 'px-4 py-3 h-[48px]' : 'px-5 py-4 border-b border-white/10'}`}
             onClick={() => !isEditing && setIsCollapsed(!isCollapsed)}
             style={{ cursor: isEditing ? 'default' : 'pointer' }}
           >
-            {isEditing && !isCollapsed ? (
-              <input 
-                value={routeData.title} 
-                onChange={e => setRouteData({...routeData, title: e.target.value})} 
-                className="bg-transparent text-xl font-black outline-none border-b border-indigo-500/50 pb-1 w-full text-white tracking-tight" 
-                placeholder="코스명"
-                onClick={e => e.stopPropagation()}
-              />
-            ) : (
-              <div className="flex items-center gap-2 overflow-hidden">
-                {isCollapsed && <MapPin size={14} className="text-indigo-400 shrink-0" />}
+            <div className="flex items-center gap-2 overflow-hidden flex-1">
+              {isCollapsed && <MapPin size={14} className="text-indigo-400 shrink-0" />}
+              {isEditing && !isCollapsed ? (
+                <input 
+                  value={routeData.title} 
+                  onChange={e => setRouteData({...routeData, title: e.target.value})} 
+                  className="bg-transparent text-xl font-black outline-none border-b border-indigo-500/50 pb-1 w-full text-white tracking-tight" 
+                  placeholder="코스명"
+                  onClick={e => e.stopPropagation()}
+                />
+              ) : (
                 <h2 className={`font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400 truncate transition-all ${isCollapsed ? 'text-sm' : 'text-xl'}`}>
                   {routeData.title}
                 </h2>
-              </div>
-            )}
+              )}
+            </div>
             
-            {!isEditing && (
-              <button className="text-slate-400 hover:text-white transition-colors shrink-0 ml-2">
-                {isCollapsed ? <ChevronDown size={16}/> : <ChevronUp size={20}/>}
-              </button>
-            )}
+            <div className="flex items-center gap-2 shrink-0 ml-3">
+              {/* 관리자 수정/삭제 버튼 (펼쳐져 있고, 수정 모드가 아닐 때만 노출) */}
+              {isPrivateMode && !isCollapsed && !isEditing && (
+                <div className="flex gap-1 mr-1" onClick={e => e.stopPropagation()}>
+                  <button onClick={handleDeleteDetail} className="p-2 bg-red-500/10 hover:bg-red-500/20 rounded-lg transition-colors border border-red-500/20 shadow-sm">
+                    <Trash2 size={14} className="text-red-400"/>
+                  </button>
+                  <button onClick={() => setIsEditing(true)} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg transition-colors border border-white/10 shadow-sm">
+                    <Edit2 size={14} className="text-slate-300"/>
+                  </button>
+                </div>
+              )}
+
+              {/* 접기/펴기 화살표 */}
+              {!isEditing && (
+                <button className="text-slate-400 hover:text-white transition-colors">
+                  {isCollapsed ? <ChevronDown size={16}/> : <ChevronUp size={20}/>}
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* 패널 바디 (펼쳤을 때만 보임) */}
+          {/* 패널 바디 */}
           <div className={`flex flex-col gap-4 transition-all duration-500 overflow-y-auto custom-scrollbar ${
             isCollapsed ? 'opacity-0 p-0 m-0 h-0' : 'opacity-100 p-5 pt-4'
           }`}>
@@ -311,38 +319,23 @@ export const BikeRouteFullMapView = ({ title }) => {
                 </div>
               </>
             ) : (
-              <>
-                <div className="flex justify-end gap-2 -mt-2">
-                  {isPrivateMode && (
-                    <>
-                      <button onClick={handleDeleteDetail} className="p-2.5 bg-red-500/10 hover:bg-red-500/20 rounded-xl transition-colors border border-red-500/20 shadow-md">
-                        <Trash2 size={16} className="text-red-400"/>
-                      </button>
-                      <button onClick={() => setIsEditing(true)} className="p-2.5 bg-white/5 hover:bg-white/10 rounded-xl transition-colors border border-white/10 shadow-md">
-                        <Edit2 size={16} className="text-slate-300"/>
-                      </button>
-                    </>
-                  )}
-                </div>
+              <div className="flex flex-col gap-3">
+                {routeData.waypoints?.length > 0 && (
+                  <div className="flex items-center gap-3 text-sm font-medium text-slate-300 bg-white/5 p-3 rounded-xl border border-white/5">
+                    <MapPin size={16} className="text-blue-400 shrink-0"/>
+                    <span className="truncate">{routeData.waypoints[0]}</span>
+                    <Navigation size={14} className="text-slate-500 shrink-0 mx-1"/>
+                    <Flag size={16} className="text-red-400 shrink-0"/>
+                    <span className="truncate">{routeData.waypoints[routeData.waypoints.length - 1]}</span>
+                  </div>
+                )}
 
-                <div className="flex flex-col gap-3">
-                  {routeData.waypoints?.length > 0 && (
-                    <div className="flex items-center gap-3 text-sm font-medium text-slate-300 bg-white/5 p-3 rounded-xl border border-white/5">
-                      <MapPin size={16} className="text-blue-400 shrink-0"/>
-                      <span className="truncate">{routeData.waypoints[0]}</span>
-                      <Navigation size={14} className="text-slate-500 shrink-0 mx-1"/>
-                      <Flag size={16} className="text-red-400 shrink-0"/>
-                      <span className="truncate">{routeData.waypoints[routeData.waypoints.length - 1]}</span>
-                    </div>
-                  )}
-
-                  {routeData.memo && (
-                    <div className="bg-indigo-500/10 border border-indigo-500/20 p-4 rounded-xl text-sm text-indigo-100/90 leading-relaxed font-medium italic">
-                      "{routeData.memo}"
-                    </div>
-                  )}
-                </div>
-              </>
+                {routeData.memo && (
+                  <div className="bg-indigo-500/10 border border-indigo-500/20 p-4 rounded-xl text-sm text-indigo-100/90 leading-relaxed font-medium italic">
+                    "{routeData.memo}"
+                  </div>
+                )}
+              </div>
             )}
           </div>
 
