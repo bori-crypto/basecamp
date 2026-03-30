@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { AppContext } from '../App';
 
+// ✅ [3단계] 바이크 코스 상세 지도 뷰
 export const BikeRouteFullMapView = ({ title }) => {
   const { BIKE_WORKER_URL, isPrivateMode, adminPassword, popPage } = useContext(AppContext);
 
@@ -16,7 +17,6 @@ export const BikeRouteFullMapView = ({ title }) => {
   const [routeData, setRouteData] = useState(null);
   const [isMapEngineMissing, setIsMapEngineMissing] = useState(false);
   
-  // ✅ 길찾기 폼 상태
   const [startPoint, setStartPoint] = useState('');
   const [goalPoint, setGoalPoint] = useState('');
   const [waypointPoints, setWaypointPoints] = useState([]);
@@ -39,7 +39,6 @@ export const BikeRouteFullMapView = ({ title }) => {
             waypoints: wps, 
             path_data: typeof found.path_data === 'string' ? JSON.parse(found.path_data || '[]') : [] 
           });
-          // DB 데이터를 폼에 분배
           if (wps.length > 0) {
             setStartPoint(wps[0] || '');
             if (wps.length > 1) {
@@ -54,7 +53,7 @@ export const BikeRouteFullMapView = ({ title }) => {
       .catch(err => console.error("DB 로드 실패:", err));
   }, [BIKE_WORKER_URL, title]);
 
-  // 2. 네이버 지도 초기화 및 렌더링 (🔥 오빠가 잡아낸 유령 메모리 버그 픽스 복구)
+  // 2. 네이버 지도 초기화 및 형광색 렌더링
   useEffect(() => {
     if (!mapRef.current || !routeData) return;
     
@@ -65,7 +64,7 @@ export const BikeRouteFullMapView = ({ title }) => {
     }
     setIsMapEngineMissing(false);
 
-    // ✅ 핵심: DOM 상자가 비어있으면 무조건 새로 그림!
+    // DOM 상자가 비어있으면 무조건 새로 그림
     if (!mapInstance.current || mapRef.current.childNodes.length === 0) {
       try {
         mapInstance.current = new window.naver.maps.Map(mapRef.current, {
@@ -89,8 +88,8 @@ export const BikeRouteFullMapView = ({ title }) => {
         polylineInstance.current = new window.naver.maps.Polyline({
           map: mapInstance.current,
           path: path,
-          strokeColor: '#ccff00', // ✅ 형광 라임색 적용
-          strokeWeight: 8,        // ✅ 굵기 강화
+          strokeColor: '#ccff00', // 야간 시인성 높은 형광 라임색
+          strokeWeight: 8,
           strokeOpacity: 0.9,
           strokeLineJoin: 'round',
           strokeLineCap: 'round'
@@ -105,6 +104,7 @@ export const BikeRouteFullMapView = ({ title }) => {
     }
   }, [routeData, mapType]); 
 
+  // 지도 타입 토글
   useEffect(() => {
     if (mapInstance.current && window.naver && window.naver.maps) {
       mapInstance.current.setMapTypeId(window.naver.maps.MapTypeId[mapType]);
@@ -127,17 +127,13 @@ export const BikeRouteFullMapView = ({ title }) => {
       if (fileName.endsWith('.gpx')) {
         const trkpts = xmlDoc.getElementsByTagName("trkpt");
         for (let i = 0; i < trkpts.length; i++) {
-          newPath.push({
-            lat: parseFloat(trkpts[i].getAttribute("lat")),
-            lng: parseFloat(trkpts[i].getAttribute("lon"))
-          });
+          newPath.push({ lat: parseFloat(trkpts[i].getAttribute("lat")), lng: parseFloat(trkpts[i].getAttribute("lon")) });
         }
       } else if (fileName.endsWith('.kml')) {
         const coordinates = xmlDoc.getElementsByTagName("coordinates");
         if (coordinates.length > 0) {
           const coordsText = coordinates[0].textContent.trim();
-          const pairs = coordsText.split(/\s+/);
-          pairs.forEach(pair => {
+          coordsText.split(/\s+/).forEach(pair => {
             const [lng, lat] = pair.split(',');
             if (lat && lng) newPath.push({ lat: parseFloat(lat), lng: parseFloat(lng) });
           });
@@ -163,9 +159,8 @@ export const BikeRouteFullMapView = ({ title }) => {
       const finalWaypoints = [startPoint, ...waypointPoints, goalPoint].filter(Boolean);
       const dataToSave = { ...routeData, waypoints: finalWaypoints };
       
-      const method = dataToSave.id ? 'PUT' : 'POST';
       const res = await fetch(BIKE_WORKER_URL, {
-        method,
+        method: dataToSave.id ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Admin-Password': adminPassword },
         body: JSON.stringify(dataToSave)
       });
@@ -201,50 +196,80 @@ export const BikeRouteFullMapView = ({ title }) => {
   if (!routeData) return <div className="p-10 text-center text-white/50">GPS 데이터 교신 중...</div>;
 
   return (
-    <div className="relative w-full h-full overflow-hidden rounded-[2.5rem] text-slate-100 animate-in fade-in duration-700 font-sans shadow-2xl bg-white/5 backdrop-blur-xl border border-white/10">
+    <div className="relative w-full h-full overflow-hidden rounded-[2.5rem] text-slate-100 animate-in fade-in duration-700 font-sans shadow-2xl bg-[#0f172a] border border-white/10">
       
-      {/* ✅ 지도 상자: w-full h-full 강제 주입 복구 완료 */}
+      {/* 지도 컨테이너 */}
       <div className="absolute inset-0 z-0 w-full h-full" ref={mapRef} />
 
+      {/* 에러 방어막 */}
       {isMapEngineMissing && (
         <div className="absolute inset-0 z-[1] flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="text-center animate-pulse flex flex-col items-center p-8 bg-slate-900/60 rounded-3xl border border-white/10 shadow-2xl">
             <AlertTriangle size={48} className="mb-4 text-amber-500/80" />
             <p className="text-slate-300 font-black tracking-widest uppercase text-sm">지도 엔진 연결 대기 중...</p>
-            <p className="text-xs text-slate-400 mt-2">네이버 클라우드 API 인증 상태를 확인해 주세요.</p>
           </div>
         </div>
       )}
 
-      {/* 우측 상단 지도 토글 버튼 */}
+      {/* 우측 상단 토글 버튼 (기준점) */}
       <div className="absolute top-6 right-6 z-20 flex gap-2">
         <button 
           onClick={() => setMapType(prev => prev === 'NORMAL' ? 'SATELLITE' : 'NORMAL')}
-          className="bg-slate-900/60 backdrop-blur-md border border-white/10 px-4 py-2 rounded-xl flex items-center gap-2 text-[11px] font-black uppercase tracking-wider text-white hover:bg-white/10 transition-colors shadow-lg"
+          className="bg-slate-900/80 backdrop-blur-xl border border-white/10 px-4 py-3 rounded-xl flex items-center gap-2 text-[11px] font-black uppercase tracking-wider text-white hover:bg-white/10 transition-colors shadow-lg"
         >
           <Layers size={14} className="text-indigo-400" />
           {mapType === 'NORMAL' ? '위성 지도 보기' : '일반 도로 보기'}
         </button>
       </div>
 
-      {/* 둥둥 떠있는 UI 패널 (Glassmorphism) */}
-      <div className="absolute top-4 left-4 right-4 md:w-96 z-10 flex flex-col gap-3 pointer-events-none">
-        <div className="pointer-events-auto flex justify-end md:hidden">
-          <button onClick={() => setIsCollapsed(!isCollapsed)} className="p-2 bg-black/40 backdrop-blur-md rounded-full text-white border border-white/10 shadow-lg">
-            {isCollapsed ? <ChevronDown size={20}/> : <ChevronUp size={20}/>}
-          </button>
-        </div>
+      {/* 좌측 상단 요약창 (애니메이션 롤업 패널) */}
+      <div className="absolute top-6 left-6 z-20 flex flex-col pointer-events-none">
+        <div className={`pointer-events-auto bg-slate-900/80 backdrop-blur-xl border border-white/10 shadow-2xl flex flex-col transition-all duration-500 overflow-hidden ${
+          isCollapsed 
+            ? 'w-48 max-h-[48px] rounded-xl cursor-pointer hover:bg-white/10' 
+            : 'w-[calc(100vw-3rem)] md:w-96 max-h-[85vh] rounded-3xl'
+        }`}>
+          
+          {/* 패널 헤더 (클릭 시 접기/펴기) */}
+          <div 
+            className={`flex items-center justify-between shrink-0 transition-all ${isCollapsed ? 'px-4 py-3 h-[48px]' : 'px-5 py-4 border-b border-white/10'}`}
+            onClick={() => !isEditing && setIsCollapsed(!isCollapsed)}
+            style={{ cursor: isEditing ? 'default' : 'pointer' }}
+          >
+            {isEditing && !isCollapsed ? (
+              <input 
+                value={routeData.title} 
+                onChange={e => setRouteData({...routeData, title: e.target.value})} 
+                className="bg-transparent text-xl font-black outline-none border-b border-indigo-500/50 pb-1 w-full text-white tracking-tight" 
+                placeholder="코스명"
+                onClick={e => e.stopPropagation()}
+              />
+            ) : (
+              <div className="flex items-center gap-2 overflow-hidden">
+                {isCollapsed && <MapPin size={14} className="text-indigo-400 shrink-0" />}
+                <h2 className={`font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400 truncate transition-all ${isCollapsed ? 'text-sm' : 'text-xl'}`}>
+                  {routeData.title}
+                </h2>
+              </div>
+            )}
+            
+            {!isEditing && (
+              <button className="text-slate-400 hover:text-white transition-colors shrink-0 ml-2">
+                {isCollapsed ? <ChevronDown size={16}/> : <ChevronUp size={20}/>}
+              </button>
+            )}
+          </div>
 
-        {!isCollapsed && (
-          <div className="pointer-events-auto bg-[#0f172a]/80 backdrop-blur-xl border border-white/10 rounded-3xl p-5 shadow-2xl flex flex-col gap-4 text-white transition-all max-h-[85vh] overflow-y-auto custom-scrollbar">
+          {/* 패널 바디 (펼쳤을 때만 보임) */}
+          <div className={`flex flex-col gap-4 transition-all duration-500 overflow-y-auto custom-scrollbar ${
+            isCollapsed ? 'opacity-0 p-0 m-0 h-0' : 'opacity-100 p-5 pt-4'
+          }`}>
             {isEditing ? (
               <>
-                <input value={routeData.title} onChange={e => setRouteData({...routeData, title: e.target.value})} className="bg-transparent text-xl font-bold outline-none border-b border-white/20 pb-2 w-full" placeholder="코스명"/>
-                
-                <div className="flex flex-col gap-2 mt-2">
+                <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-3">
                     <MapPin size={18} className="text-blue-400 shrink-0"/>
-                    <input placeholder="출발지" value={startPoint} onChange={e => setStartPoint(e.target.value)} className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm outline-none"/>
+                    <input placeholder="출발지" value={startPoint} onChange={e => setStartPoint(e.target.value)} className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm outline-none text-white"/>
                   </div>
                   
                   {waypointPoints.map((wp, idx) => (
@@ -254,7 +279,7 @@ export const BikeRouteFullMapView = ({ title }) => {
                         const newWps = [...waypointPoints];
                         newWps[idx] = e.target.value;
                         setWaypointPoints(newWps);
-                      }} className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm outline-none"/>
+                      }} className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm outline-none text-white"/>
                       <button onClick={() => setWaypointPoints(waypointPoints.filter((_, i) => i !== idx))} className="text-red-400 p-2 hover:bg-white/10 rounded-xl transition-colors shrink-0">
                         <Trash2 size={16}/>
                       </button>
@@ -269,41 +294,38 @@ export const BikeRouteFullMapView = ({ title }) => {
 
                   <div className="flex items-center gap-3">
                     <Flag size={18} className="text-red-400 shrink-0"/>
-                    <input placeholder="도착지" value={goalPoint} onChange={e => setGoalPoint(e.target.value)} className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm outline-none"/>
+                    <input placeholder="도착지" value={goalPoint} onChange={e => setGoalPoint(e.target.value)} className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm outline-none text-white"/>
                   </div>
                 </div>
 
-                <textarea placeholder="메모 (노면 상태, 공기압 등)" value={routeData.memo} onChange={e => setRouteData({...routeData, memo: e.target.value})} className="bg-white/5 border border-white/10 rounded-xl p-3 text-sm h-20 outline-none resize-none mt-2 custom-scrollbar" />
+                <textarea placeholder="메모 (노면 상태, 공기압 등)" value={routeData.memo} onChange={e => setRouteData({...routeData, memo: e.target.value})} className="bg-white/5 border border-white/10 rounded-xl p-3 text-sm h-20 outline-none resize-none mt-2 custom-scrollbar text-slate-300" />
 
                 <div className="flex justify-between items-center mt-2">
-                  <label className="flex items-center gap-2 bg-white/10 hover:bg-white/20 transition-colors px-4 py-2.5 rounded-xl text-sm font-medium cursor-pointer border border-white/10">
+                  <label className="flex items-center gap-2 bg-white/10 hover:bg-white/20 transition-colors px-4 py-2.5 rounded-xl text-sm font-medium cursor-pointer border border-white/10 text-slate-200">
                     <Paperclip size={16} className="text-indigo-400"/> 파일 첨부
                     <input type="file" hidden accept=".gpx,.kml" onChange={handleFileUpload} />
                   </label>
-                  <button onClick={handleSave} className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 transition-colors px-6 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/30">
+                  <button onClick={handleSave} className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 transition-colors px-6 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/30 text-white">
                     <Save size={16}/> 저장
                   </button>
                 </div>
               </>
             ) : (
               <>
-                <div className="flex justify-between items-start">
-                  <h2 className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">
-                    {routeData.title}
-                  </h2>
+                <div className="flex justify-end gap-2 -mt-2">
                   {isPrivateMode && (
-                    <div className="flex gap-2">
+                    <>
                       <button onClick={handleDeleteDetail} className="p-2.5 bg-red-500/10 hover:bg-red-500/20 rounded-xl transition-colors border border-red-500/20 shadow-md">
                         <Trash2 size={16} className="text-red-400"/>
                       </button>
                       <button onClick={() => setIsEditing(true)} className="p-2.5 bg-white/5 hover:bg-white/10 rounded-xl transition-colors border border-white/10 shadow-md">
                         <Edit2 size={16} className="text-slate-300"/>
                       </button>
-                    </div>
+                    </>
                   )}
                 </div>
 
-                <div className="flex flex-col gap-3 mt-1">
+                <div className="flex flex-col gap-3">
                   {routeData.waypoints?.length > 0 && (
                     <div className="flex items-center gap-3 text-sm font-medium text-slate-300 bg-white/5 p-3 rounded-xl border border-white/5">
                       <MapPin size={16} className="text-blue-400 shrink-0"/>
@@ -315,15 +337,16 @@ export const BikeRouteFullMapView = ({ title }) => {
                   )}
 
                   {routeData.memo && (
-                    <div className="bg-indigo-500/10 border border-indigo-500/20 p-4 rounded-xl text-sm text-indigo-100/90 leading-relaxed font-medium">
-                      {routeData.memo}
+                    <div className="bg-indigo-500/10 border border-indigo-500/20 p-4 rounded-xl text-sm text-indigo-100/90 leading-relaxed font-medium italic">
+                      "{routeData.memo}"
                     </div>
                   )}
                 </div>
               </>
             )}
           </div>
-        )}
+
+        </div>
       </div>
     </div>
   );
