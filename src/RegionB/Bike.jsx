@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useContext } from 'react';
 import { 
   MapPin, Navigation, Flag, ChevronDown, 
   ChevronUp, Plus, Edit2, Save, Paperclip, Trash2,
-  Layers, AlertTriangle
+  Layers, AlertTriangle, Route
 } from 'lucide-react';
 import { AppContext } from '../App';
 
@@ -20,6 +20,7 @@ export const BikeRouteFullMapView = ({ title }) => {
   const [startPoint, setStartPoint] = useState('');
   const [goalPoint, setGoalPoint] = useState('');
   const [waypointPoints, setWaypointPoints] = useState([]);
+  const [isRouting, setIsRouting] = useState(false); // 길찾기 로딩 상태
 
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
@@ -87,7 +88,7 @@ export const BikeRouteFullMapView = ({ title }) => {
         polylineInstance.current = new window.naver.maps.Polyline({
           map: mapInstance.current,
           path: path,
-          strokeColor: '#ccff00',
+          strokeColor: '#ccff00', // ✅ 야간 시인성 극대화 (형광 라임)
           strokeWeight: 8,
           strokeOpacity: 0.9,
           strokeLineJoin: 'round',
@@ -108,6 +109,90 @@ export const BikeRouteFullMapView = ({ title }) => {
       mapInstance.current.setMapTypeId(window.naver.maps.MapTypeId[mapType]);
     }
   }, [mapType]);
+
+  // ✅ 텍스트 주소를 좌표(위경도)로 변환하는 Geocoder 엔진
+  const getGeocode = (query) => {
+    return new Promise((resolve, reject) => {
+      if (!window.naver?.maps?.Service?.geocode) {
+        alert("Geocoding 서비스가 로드되지 않았어! index.html 스크립트에 &submodules=geocoder 를 꼭 추가해 줘!");
+        return reject('No geocoder');
+      }
+      window.naver.maps.Service.geocode({ query }, (status, response) => {
+        if (status !== window.naver.maps.Service.Status.OK) return reject('Geocode Error');
+        if (response.v2.addresses.length > 0) {
+          const { x, y } = response.v2.addresses[0];
+          resolve(`${x},${y}`); // lng, lat 포맷 (네이버 Direction 15 요구 스펙)
+        } else {
+          alert(`"${query}" 장소를 찾을 수 없어! 이름을 살짝 바꿔볼까?`);
+          reject('No results');
+        }
+      });
+    });
+  };
+
+  // ✅ 네이버 길찾기 API 연동 및 D1 자동 저장 로직
+  const handleSearchAndSaveRoute = async () => {
+    if (!startPoint || !goalPoint) {
+      alert('출발지와 도착지는 필수야!');
+      return;
+    }
+
+    setIsRouting(true);
+    try {
+      // 1. 입력된 텍스트들을 위경도로 변환
+      const startCoord = await getGeocode(startPoint);
+      const goalCoord = await getGeocode(goalPoint);
+      
+      const wpsCoords = [];
+      for (const wp of waypointPoints) {
+        if (wp.trim()) wpsCoords.push(await getGeocode(wp.trim()));
+      }
+      const waypointsStr = wpsCoords.join('|');
+
+      // 2. 워커의 /direction 프록시로 방향 탐색 요청
+      const directionUrl = new URL('/direction', BIKE_WORKER_URL).toString();
+      const dirRes = await fetch(directionUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ start: startCoord, goal: goalCoord, waypoints: waypointsStr })
+      });
+      
+      const dirData = await dirRes.json();
+      
+      let newPathData = [];
+      if (dirData.route?.traoptimal?.[0]?.path) {
+        // [lng, lat] 배열을 우리가 쓰는 {lat, lng} 객체 배열로 매핑
+        newPathData = dirData.route.traoptimal[0].path.map(p => ({ lng: p[0], lat: p[1] }));
+      } else {
+        alert("도로를 따라가는 경로를 찾지 못했어!");
+        setIsRouting(false);
+        return;
+      }
+
+      // 3. 방향 탐색 성공 시, D1에 자동 박제 (원스톱 저장)
+      const finalWaypoints = [startPoint, ...waypointPoints, goalPoint].filter(Boolean);
+      const dataToSave = { ...routeData, waypoints: finalWaypoints, path_data: newPathData };
+      
+      const res = await fetch(BIKE_WORKER_URL, {
+        method: dataToSave.id ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Password': adminPassword },
+        body: JSON.stringify(dataToSave)
+      });
+
+      if (res.ok) {
+        alert('길찾기 및 데이터 자동 저장 완료! 🏍️💨');
+        setRouteData(dataToSave);
+        setIsEditing(false);
+      } else {
+        alert('저장 권한이 없어!');
+      }
+
+    } catch (e) {
+      console.error("길찾기 실패:", e);
+    } finally {
+      setIsRouting(false);
+    }
+  };
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
@@ -142,7 +227,7 @@ export const BikeRouteFullMapView = ({ title }) => {
 
       if (newPath.length > 0) {
         setRouteData(prev => ({ ...prev, path_data: newPath }));
-        alert(`경로 파싱 완료! (좌표 ${newPath.length}개)`);
+        alert(`경로 파싱 완료! (좌표 ${newPath.length}개) - 하단 수동 저장을 눌러줘!`);
       } else {
         alert("파일에서 경로를 찾을 수 없습니다.");
       }
@@ -151,7 +236,8 @@ export const BikeRouteFullMapView = ({ title }) => {
     e.target.value = null;
   };
 
-  const handleSave = async () => {
+  // 일반 수동 저장 (메모 수정, 파일 업로드 시 사용)
+  const handleManualSave = async () => {
     try {
       const finalWaypoints = [startPoint, ...waypointPoints, goalPoint].filter(Boolean);
       const dataToSave = { ...routeData, waypoints: finalWaypoints };
@@ -167,7 +253,7 @@ export const BikeRouteFullMapView = ({ title }) => {
         setRouteData(dataToSave);
         setIsEditing(false);
       } else {
-        alert('저장 실패 (권한 부족)');
+        alert('저장 권한이 없어!');
       }
     } catch (e) {
       alert('네트워크 에러 발생!');
@@ -223,7 +309,7 @@ export const BikeRouteFullMapView = ({ title }) => {
             : 'w-[calc(100vw-3rem)] md:w-96 max-h-[85vh] rounded-3xl'
         }`}>
           
-          {/* ✅ 헤더 영역: 어드민 버튼을 헤더 안으로 안전하게 편입 */}
+          {/* 어드민 버튼 포함 안전 헤더 */}
           <div 
             className={`flex items-center justify-between shrink-0 transition-all ${isCollapsed ? 'px-4 py-3 h-[48px]' : 'px-5 py-4 border-b border-white/10'}`}
             onClick={() => !isEditing && setIsCollapsed(!isCollapsed)}
@@ -247,7 +333,6 @@ export const BikeRouteFullMapView = ({ title }) => {
             </div>
             
             <div className="flex items-center gap-2 shrink-0 ml-3">
-              {/* 관리자 수정/삭제 버튼 (펼쳐져 있고, 수정 모드가 아닐 때만 노출) */}
               {isPrivateMode && !isCollapsed && !isEditing && (
                 <div className="flex gap-1 mr-1" onClick={e => e.stopPropagation()}>
                   <button onClick={handleDeleteDetail} className="p-2 bg-red-500/10 hover:bg-red-500/20 rounded-lg transition-colors border border-red-500/20 shadow-sm">
@@ -258,8 +343,6 @@ export const BikeRouteFullMapView = ({ title }) => {
                   </button>
                 </div>
               )}
-
-              {/* 접기/펴기 화살표 */}
               {!isEditing && (
                 <button className="text-slate-400 hover:text-white transition-colors">
                   {isCollapsed ? <ChevronDown size={16}/> : <ChevronUp size={20}/>}
@@ -277,7 +360,7 @@ export const BikeRouteFullMapView = ({ title }) => {
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-3">
                     <MapPin size={18} className="text-blue-400 shrink-0"/>
-                    <input placeholder="출발지" value={startPoint} onChange={e => setStartPoint(e.target.value)} className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm outline-none text-white"/>
+                    <input placeholder="출발지 (예: 울산)" value={startPoint} onChange={e => setStartPoint(e.target.value)} className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm outline-none text-white"/>
                   </div>
                   
                   {waypointPoints.map((wp, idx) => (
@@ -302,19 +385,30 @@ export const BikeRouteFullMapView = ({ title }) => {
 
                   <div className="flex items-center gap-3">
                     <Flag size={18} className="text-red-400 shrink-0"/>
-                    <input placeholder="도착지" value={goalPoint} onChange={e => setGoalPoint(e.target.value)} className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm outline-none text-white"/>
+                    <input placeholder="도착지 (예: 대전)" value={goalPoint} onChange={e => setGoalPoint(e.target.value)} className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm outline-none text-white"/>
                   </div>
                 </div>
 
+                {/* ✅ 대망의 네이버 실시간 길찾기 & 자동 저장 버튼 */}
+                <button 
+                  onClick={handleSearchAndSaveRoute} 
+                  disabled={isRouting}
+                  className="mt-2 w-full bg-emerald-500/80 hover:bg-emerald-600 disabled:bg-emerald-500/40 text-white font-bold py-3 rounded-xl text-sm transition-all shadow-lg flex items-center justify-center gap-2"
+                >
+                  <Route size={18} />
+                  {isRouting ? '위성 좌표 통신 중...' : '네이버 길찾기 & 자동 저장 🚀'}
+                </button>
+
                 <textarea placeholder="메모 (노면 상태, 공기압 등)" value={routeData.memo} onChange={e => setRouteData({...routeData, memo: e.target.value})} className="bg-white/5 border border-white/10 rounded-xl p-3 text-sm h-20 outline-none resize-none mt-2 custom-scrollbar text-slate-300" />
 
-                <div className="flex justify-between items-center mt-2">
+                <div className="flex justify-between items-center mt-2 pt-2 border-t border-white/10">
                   <label className="flex items-center gap-2 bg-white/10 hover:bg-white/20 transition-colors px-4 py-2.5 rounded-xl text-sm font-medium cursor-pointer border border-white/10 text-slate-200">
-                    <Paperclip size={16} className="text-indigo-400"/> 파일 첨부
+                    <Paperclip size={16} className="text-indigo-400"/> 수동 파일 첨부
                     <input type="file" hidden accept=".gpx,.kml" onChange={handleFileUpload} />
                   </label>
-                  <button onClick={handleSave} className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 transition-colors px-6 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/30 text-white">
-                    <Save size={16}/> 저장
+                  {/* 일반 저장 버튼 (메모만 바꾸거나 GPX 올렸을 때 사용) */}
+                  <button onClick={handleManualSave} className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 transition-colors px-6 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/30 text-white">
+                    <Save size={16}/> 수동 저장
                   </button>
                 </div>
               </>
