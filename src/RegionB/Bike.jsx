@@ -57,7 +57,7 @@ export const BikeRouteFullMapView = ({ title }) => {
       .catch(err => console.error("DB 로드 실패:", err));
   }, [BIKE_WORKER_URL, title]);
 
-  // 2. 네이버 지도 초기화 및 우클릭 이벤트 부착
+  // 2. 네이버 지도 초기화 및 우클릭/롱탭 이벤트 부착
   useEffect(() => {
     if (!mapRef.current || !routeData) return;
     
@@ -77,8 +77,13 @@ export const BikeRouteFullMapView = ({ title }) => {
           disableKineticPan: false,
         });
 
-        // ✅ 지도 우클릭 이벤트 리스너 (편집 모드 전용 메뉴 띄우기)
+        // ✅ 지도 우클릭 이벤트 (PC 환경)
         window.naver.maps.Event.addListener(mapInstance.current, 'rightclick', (e) => {
+          setContextMenu({ x: e.offset.x, y: e.offset.y, latlng: e.coord });
+        });
+
+        // ✅ 지도 길게 누르기 이벤트 (모바일/태블릿 터치 환경 대응)
+        window.naver.maps.Event.addListener(mapInstance.current, 'longtap', (e) => {
           setContextMenu({ x: e.offset.x, y: e.offset.y, latlng: e.coord });
         });
 
@@ -140,7 +145,7 @@ export const BikeRouteFullMapView = ({ title }) => {
           const { x, y } = response.v2.addresses[0];
           resolve(`${x},${y}`);
         } else {
-          // 검색 실패 시 좌표를 직접 타이핑한 경우 방어 로직
+          // 검색 실패 시 텍스트 그대로 반환하여 방어
           resolve(query); 
         }
       });
@@ -151,7 +156,6 @@ export const BikeRouteFullMapView = ({ title }) => {
   const getAddressFromCoords = (latlng) => {
     return new Promise((resolve) => {
       if (!window.naver?.maps?.Service?.reverseGeocode) {
-        // Geocoder가 없으면 그냥 위경도를 반환
         resolve(`${latlng.lat().toFixed(5)}, ${latlng.lng().toFixed(5)}`);
         return;
       }
@@ -165,7 +169,6 @@ export const BikeRouteFullMapView = ({ title }) => {
         if (status === window.naver.maps.Service.Status.OK && response.v2) {
           const road = response.v2.address.roadAddress;
           const jibun = response.v2.address.jibunAddress;
-          // 도로명 주소가 우선, 없으면 지번 주소, 둘 다 없으면 위경도 좌표
           resolve(road || jibun || `${latlng.lat().toFixed(5)}, ${latlng.lng().toFixed(5)}`);
         } else {
           resolve(`${latlng.lat().toFixed(5)}, ${latlng.lng().toFixed(5)}`);
@@ -334,7 +337,10 @@ export const BikeRouteFullMapView = ({ title }) => {
   if (!routeData) return <div className="p-10 text-center text-white/50">GPS 데이터 교신 중...</div>;
 
   return (
-    <div className="relative w-full h-full overflow-hidden rounded-[2.5rem] text-slate-100 animate-in fade-in duration-700 font-sans shadow-2xl bg-[#0f172a] border border-white/10">
+    <div 
+      className="relative w-full h-full overflow-hidden rounded-[2.5rem] text-slate-100 animate-in fade-in duration-700 font-sans shadow-2xl bg-[#0f172a] border border-white/10"
+      onContextMenu={(e) => e.preventDefault()} // ✅ 브라우저 기본 우클릭 메뉴 완벽 차단
+    >
       
       {/* 지도 컨테이너 */}
       <div className="absolute inset-0 z-0 w-full h-full" ref={mapRef} />
@@ -434,12 +440,8 @@ export const BikeRouteFullMapView = ({ title }) => {
           }`}>
             {isEditing ? (
               <>
-                {/* 우클릭 안내 메시지 */}
-                <div className="bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-medium p-3 rounded-xl flex items-center gap-2">
-                  <MapPin size={14} className="shrink-0" />
-                  지도에서 원하는 곳을 우클릭하면 자동으로 주소가 입력돼!
-                </div>
-
+                {/* 우클릭 안내 메시지 삭제 완료 */}
+                
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-3">
                     <MapPin size={18} className="text-blue-400 shrink-0"/>
@@ -472,7 +474,6 @@ export const BikeRouteFullMapView = ({ title }) => {
                   </div>
                 </div>
 
-                {/* ✅ 길찾기 미리보기 전용 버튼 */}
                 <button 
                   onClick={handleSearchRoutePreview} 
                   disabled={isRouting}
@@ -490,7 +491,6 @@ export const BikeRouteFullMapView = ({ title }) => {
                     <input type="file" hidden accept=".gpx,.kml" onChange={handleFileUpload} />
                   </label>
 
-                  {/* ✅ DB 저장 전용 버튼 */}
                   <button onClick={handleSave} className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 transition-colors px-8 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/30 text-white">
                     <Save size={16}/> 저장
                   </button>
