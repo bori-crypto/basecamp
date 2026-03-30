@@ -28,17 +28,17 @@ export default {
 
     try {
       // ==========================================
-      // [NEW] 네이버 Direction 15 API 프록시 (이륜차 모드)
+      // [Directions 15] 이륜차 최적화 프록시
       // ==========================================
       if (request.method === "POST" && url.pathname === "/direction") {
         const body = await request.json();
         const { start, goal, waypoints } = body;
 
         if (!start || !goal) {
-          return new Response(JSON.stringify({ error: "출발지와 도착지 좌표는 필수입니다." }), { status: 400, headers: corsHeaders });
+          return new Response(JSON.stringify({ error: "출발지와 도착지 좌표가 누락되었습니다." }), { status: 400, headers: corsHeaders });
         }
 
-        // ✅ 핵심: option=traavoidcaronly (자동차 전용도로 회피 = 이륜차 오토바이 최적화 경로)
+        // ✅ 핵심: traavoidcaronly (자동차 전용도로 회피 = 이륜차 필수 옵션)
         let naverApiUrl = `https://naveropenapi.apigw.ntruss.com/map-direction-15/v1/driving?start=${start}&goal=${goal}&option=traavoidcaronly`;
         
         if (waypoints) {
@@ -48,15 +48,26 @@ export default {
         const naverRes = await fetch(naverApiUrl, {
           method: "GET",
           headers: {
-            "X-NCP-APIGW-API-KEY-ID": env.NAVER_CLIENT_ID,
-            "X-NCP-APIGW-API-KEY": env.NAVER_CLIENT_SECRET
+            "X-NCP-APIGW-API-KEY-ID": env.NAVER_CLIENT_ID || "",
+            "X-NCP-APIGW-API-KEY": env.NAVER_CLIENT_SECRET || ""
           }
         });
 
         const naverData = await naverRes.json();
+
+        // ✅ 진단 모드: 네이버가 에러를 뱉으면 프론트에 상세 이유를 그대로 전달
+        if (!naverRes.ok) {
+          return new Response(JSON.stringify({ 
+            error: "NAVER_API_ERROR", 
+            status: naverRes.status,
+            detail: naverData.message || naverData.error?.message || "알 수 없는 API 에러"
+          }), { status: naverRes.status, headers: corsHeaders });
+        }
+
         return new Response(JSON.stringify(naverData), { headers: corsHeaders });
       }
 
+      // [기존 DB CRUD 로직 유지]
       if (request.method === "GET") {
         const id = url.searchParams.get("id");
         if (id) {
