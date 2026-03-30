@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useContext } from 'react';
 import { 
   MapPin, Navigation, Flag, ChevronDown, 
   ChevronUp, Plus, Edit2, Save, Paperclip, Trash2,
-  Layers, AlertTriangle, Route
+  Layers, AlertTriangle, Route, ArrowUpDown
 } from 'lucide-react';
 import { AppContext } from '../App';
 
@@ -22,12 +22,15 @@ export const BikeRouteFullMapView = ({ title }) => {
   const [waypointPoints, setWaypointPoints] = useState([]);
   const [isRouting, setIsRouting] = useState(false);
 
-  // ✅ 우클릭 컨텍스트 메뉴 상태
+  // ✅ 우클릭 컨텍스트 메뉴 상태 (절대 좌표 사용)
   const [contextMenu, setContextMenu] = useState(null);
 
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
   const polylineInstance = useRef(null);
+  
+  // ✅ 실물 마커를 담아둘 보관함 (Ref)
+  const markersRef = useRef({ start: null, goal: null, waypoints: [] });
 
   // 1. D1 DB 로드
   useEffect(() => {
@@ -57,7 +60,7 @@ export const BikeRouteFullMapView = ({ title }) => {
       .catch(err => console.error("DB 로드 실패:", err));
   }, [BIKE_WORKER_URL, title]);
 
-  // 2. 네이버 지도 초기화 및 우클릭/롱탭 이벤트 부착
+  // 2. 네이버 지도 초기화
   useEffect(() => {
     if (!mapRef.current || !routeData) return;
     
@@ -77,17 +80,13 @@ export const BikeRouteFullMapView = ({ title }) => {
           disableKineticPan: false,
         });
 
-        // ✅ 지도 우클릭 이벤트 (PC 환경)
+        // ✅ 우클릭/롱탭 이벤트 (브라우저 절대 좌표 e.pointerEvent.clientX 사용)
         window.naver.maps.Event.addListener(mapInstance.current, 'rightclick', (e) => {
-          setContextMenu({ x: e.offset.x, y: e.offset.y, latlng: e.coord });
+          setContextMenu({ x: e.pointerEvent.clientX, y: e.pointerEvent.clientY, latlng: e.coord });
         });
-
-        // ✅ 지도 길게 누르기 이벤트 (모바일/태블릿 터치 환경 대응)
         window.naver.maps.Event.addListener(mapInstance.current, 'longtap', (e) => {
-          setContextMenu({ x: e.offset.x, y: e.offset.y, latlng: e.coord });
+          setContextMenu({ x: e.pointerEvent.clientX, y: e.pointerEvent.clientY, latlng: e.coord });
         });
-
-        // ✅ 지도 좌클릭 시 팝업 닫기
         window.naver.maps.Event.addListener(mapInstance.current, 'click', () => {
           setContextMenu(null);
         });
@@ -130,29 +129,23 @@ export const BikeRouteFullMapView = ({ title }) => {
   }, [mapType]);
 
   // =========================================================
-  // ✅ 지오코딩 엔진 (Geocoding & Reverse Geocoding)
+  // ✅ 지오코딩 엔진 및 마커 관리
   // =========================================================
 
-  // 주소 -> 좌표 변환 (기존 길찾기용)
   const getGeocode = (query) => {
-    return new Promise((resolve, reject) => {
-      if (!window.naver?.maps?.Service?.geocode) {
-        return reject('No geocoder');
-      }
+    return new Promise((resolve) => {
+      if (!window.naver?.maps?.Service?.geocode) return resolve(null);
       window.naver.maps.Service.geocode({ query }, (status, response) => {
-        if (status !== window.naver.maps.Service.Status.OK) return reject('Error');
-        if (response.v2.addresses.length > 0) {
+        if (status === window.naver.maps.Service.Status.OK && response.v2.addresses.length > 0) {
           const { x, y } = response.v2.addresses[0];
-          resolve(`${x},${y}`);
+          resolve({ lng: parseFloat(x), lat: parseFloat(y) });
         } else {
-          // 검색 실패 시 텍스트 그대로 반환하여 방어
-          resolve(query); 
+          resolve(null);
         }
       });
     });
   };
 
-  // 좌표 -> 주소 변환 (우클릭 리버스 지오코딩)
   const getAddressFromCoords = (latlng) => {
     return new Promise((resolve) => {
       if (!window.naver?.maps?.Service?.reverseGeocode) {
@@ -177,30 +170,86 @@ export const BikeRouteFullMapView = ({ title }) => {
     });
   };
 
-  // 우클릭 팝업 메뉴 액션 핸들러
+  // ✅ 지도에 마커를 생성하거나 위치를 옮기는 통합 함수
+  const updateMarker = (type, latlng, index = 0) => {
+    let color = type === 'start' ? '#3b82f6' : type === 'goal' ? '#ef4444' : '#10b981';
+    let text = type === 'start' ? '출' : type === 'goal' ? '도' : String(index + 1);
+    
+    let markerRef = type === 'start' ? markersRef.current.start : 
+                    type === 'goal' ? markersRef.current.goal : 
+                    markersRef.current.waypoints[index];
+
+    if (markerRef) {
+      markerRef.setPosition(latlng);
+    } else {
+      markerRef = new window.naver.maps.Marker({
+        position: latlng,
+        map: mapInstance.current,
+        draggable: true, // 드래그 앤 드롭 활성화!
+        icon: {
+          content: `<div style="background-color:${color}; width:24px; height:24px; border-radius:50%; border:2px solid white; box-shadow:0 3px 6px rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; color:white; font-size:11px; font-weight:900;">${text}</div>`,
+          anchor: new window.naver.maps.Point(12, 12)
+        }
+      });
+
+      // 마커를 드래그해서 놓았을 때 리버스 지오코딩으로 주소 업데이트
+      window.naver.maps.Event.addListener(markerRef, 'dragend', async (e) => {
+        const address = await getAddressFromCoords(e.coord);
+        if (type === 'start') setStartPoint(address);
+        else if (type === 'goal') setGoalPoint(address);
+        else if (type === 'waypoint') {
+          setWaypointPoints(prev => {
+            const newWps = [...prev];
+            newWps[index] = address;
+            return newWps;
+          });
+        }
+      });
+
+      if (type === 'start') markersRef.current.start = markerRef;
+      else if (type === 'goal') markersRef.current.goal = markerRef;
+      else markersRef.current.waypoints[index] = markerRef;
+    }
+  };
+
   const handleSetPointFromMap = async (type) => {
     if (!contextMenu) return;
     const { latlng } = contextMenu;
-    setContextMenu(null); // 팝업 즉시 숨김
+    setContextMenu(null); 
 
-    // 클릭한 위치를 한글 주소로 변환
     const address = await getAddressFromCoords(latlng);
 
     if (type === 'start') {
       setStartPoint(address);
+      updateMarker('start', latlng);
     } else if (type === 'goal') {
       setGoalPoint(address);
+      updateMarker('goal', latlng);
     } else if (type === 'waypoint') {
       if (waypointPoints.length < 13) {
         setWaypointPoints([...waypointPoints, address]);
+        updateMarker('waypoint', latlng, waypointPoints.length);
       } else {
         alert('경유지는 최대 13개까지만 가능해!');
       }
     }
   };
 
+  // ✅ 출발지 ⇄ 도착지 위치/마커 스왑 함수
+  const handleSwapPoints = () => {
+    const tempPoint = startPoint;
+    setStartPoint(goalPoint);
+    setGoalPoint(tempPoint);
+    
+    if (markersRef.current.start && markersRef.current.goal) {
+      const tempPos = markersRef.current.start.getPosition();
+      markersRef.current.start.setPosition(markersRef.current.goal.getPosition());
+      markersRef.current.goal.setPosition(tempPos);
+    }
+  };
+
   // =========================================================
-  // ✅ 1. 길찾기 미리보기 (저장 안 함)
+  // ✅ 1. 길찾기 미리보기 (마커 동기화 & 렌더링)
   // =========================================================
   const handleSearchRoutePreview = async () => {
     if (!startPoint || !goalPoint) {
@@ -210,38 +259,65 @@ export const BikeRouteFullMapView = ({ title }) => {
 
     setIsRouting(true);
     try {
-      const startCoord = await getGeocode(startPoint);
-      const goalCoord = await getGeocode(goalPoint);
-      
-      const wpsCoords = [];
-      for (const wp of waypointPoints) {
-        if (wp.trim()) wpsCoords.push(await getGeocode(wp.trim()));
-      }
-      const waypointsStr = wpsCoords.join('|');
+      // 주소를 정확한 위경도 좌표 객체로 변환
+      const startG = await getGeocode(startPoint);
+      const goalG = await getGeocode(goalPoint);
 
+      if (!startG || !goalG) {
+        alert('출발지나 도착지 주소를 정확히 찾을 수 없어! 지도 우클릭을 사용해 봐.');
+        setIsRouting(false); return;
+      }
+
+      // 텍스트를 위경도 문자열로 변환 (API 전송용)
+      const startStr = `${startG.lng},${startG.lat}`;
+      const goalStr = `${goalG.lng},${goalG.lat}`;
+      
+      const wpsStrs = [];
+      const validWpCoords = [];
+      for (let i = 0; i < waypointPoints.length; i++) {
+        if (waypointPoints[i].trim()) {
+          const wpG = await getGeocode(waypointPoints[i].trim());
+          if (wpG) {
+            wpsStrs.push(`${wpG.lng},${wpG.lat}`);
+            validWpCoords.push(wpG);
+          }
+        }
+      }
+
+      // 네이버 API 통신
       const directionUrl = new URL('/direction', BIKE_WORKER_URL).toString();
       const dirRes = await fetch(directionUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ start: startCoord, goal: goalCoord, waypoints: waypointsStr })
+        body: JSON.stringify({ start: startStr, goal: goalStr, waypoints: wpsStrs.join('|') })
       });
       
       const dirData = await dirRes.json();
       
-      let newPathData = [];
-      if (dirData.route?.traoptimal?.[0]?.path) {
-        newPathData = dirData.route.traoptimal[0].path.map(p => ({ lng: p[0], lat: p[1] }));
-      } else {
-        alert("도로를 따라가는 경로를 찾지 못했어! 지도 우클릭을 이용해 정확한 주소를 찍어봐.");
+      if (!dirData.route?.traoptimal?.[0]?.path) {
+        alert("이 좌표로는 도로 길찾기가 불가능해! 마커를 드래그해서 실제 도로 위로 옮겨줘.");
         setIsRouting(false);
         return;
       }
 
-      // 🚨 저장 안 하고 화면(상태)에만 그리기
+      const newPathData = dirData.route.traoptimal[0].path.map(p => ({ lng: p[0], lat: p[1] }));
+
+      // 지도 위 마커 강제 동기화 (검색된 정확한 위치로 갱신)
+      updateMarker('start', new window.naver.maps.LatLng(startG.lat, startG.lng));
+      updateMarker('goal', new window.naver.maps.LatLng(goalG.lat, goalG.lng));
+      validWpCoords.forEach((g, idx) => updateMarker('waypoint', new window.naver.maps.LatLng(g.lat, g.lng), idx));
+      
+      // 쓰이지 않는 경유지 마커 지우기
+      markersRef.current.waypoints.forEach((m, idx) => {
+        if (idx >= validWpCoords.length) m.setMap(null);
+      });
+      markersRef.current.waypoints = markersRef.current.waypoints.slice(0, validWpCoords.length);
+
+      // 화면(상태)에만 그리기
       const finalWaypoints = [startPoint, ...waypointPoints, goalPoint].filter(Boolean);
       setRouteData(prev => ({ ...prev, waypoints: finalWaypoints, path_data: newPathData }));
       
-      alert('경로 미리보기 완료! 🏍️\n마음에 들면 하단의 [저장] 버튼을 눌러줘.');
+      alert('경로 탐색 완료! 🏍️ 마커를 드래그해 위치를 수정하거나 하단의 [저장] 버튼을 눌러줘.');
 
     } catch (e) {
       console.error("길찾기 실패:", e);
@@ -251,7 +327,7 @@ export const BikeRouteFullMapView = ({ title }) => {
   };
 
   // =========================================================
-  // ✅ 2. D1 최종 저장 (오빠가 원할 때만)
+  // ✅ 2. D1 최종 저장
   // =========================================================
   const handleSave = async () => {
     try {
@@ -303,15 +379,13 @@ export const BikeRouteFullMapView = ({ title }) => {
           });
         }
       } else {
-        alert("GPX 또는 KML 파일만 지원합니다.");
+        alert("GPX/KML 파일만 지원합니다.");
         return;
       }
 
       if (newPath.length > 0) {
         setRouteData(prev => ({ ...prev, path_data: newPath }));
-        alert(`경로 파싱 완료! (좌표 ${newPath.length}개) - 하단 수동 저장을 눌러줘!`);
-      } else {
-        alert("파일에서 경로를 찾을 수 없습니다.");
+        alert(`파싱 완료! (좌표 ${newPath.length}개) - 수동 저장을 눌러줘!`);
       }
     };
     reader.readAsText(file);
@@ -326,12 +400,9 @@ export const BikeRouteFullMapView = ({ title }) => {
         headers: { 'X-Admin-Password': adminPassword }
       });
       if (res.ok) { 
-        alert("삭제 완료"); 
-        popPage(); 
+        alert("삭제 완료"); popPage(); 
       }
-    } catch (e) {
-      alert("삭제 실패");
-    }
+    } catch (e) { alert("삭제 실패"); }
   };
 
   if (!routeData) return <div className="p-10 text-center text-white/50">GPS 데이터 교신 중...</div>;
@@ -339,16 +410,14 @@ export const BikeRouteFullMapView = ({ title }) => {
   return (
     <div 
       className="relative w-full h-full overflow-hidden rounded-[2.5rem] text-slate-100 animate-in fade-in duration-700 font-sans shadow-2xl bg-[#0f172a] border border-white/10"
-      onContextMenu={(e) => e.preventDefault()} // ✅ 브라우저 기본 우클릭 메뉴 완벽 차단
+      onContextMenu={(e) => e.preventDefault()}
     >
-      
-      {/* 지도 컨테이너 */}
       <div className="absolute inset-0 z-0 w-full h-full" ref={mapRef} />
 
-      {/* ✅ 지도 우클릭 컨텍스트 메뉴 UI */}
+      {/* ✅ 팝업 컨텍스트 메뉴 (fixed로 절대 좌표계에 띄움) */}
       {contextMenu && isEditing && (
         <div 
-          className="absolute z-50 bg-slate-900/95 backdrop-blur-xl border border-indigo-500/30 rounded-2xl shadow-2xl flex flex-col overflow-hidden w-40 animate-in fade-in zoom-in-95 duration-200"
+          className="fixed z-[9999] bg-slate-900/95 backdrop-blur-xl border border-indigo-500/30 rounded-2xl shadow-2xl flex flex-col overflow-hidden w-36 animate-in fade-in zoom-in-95 duration-200"
           style={{ left: contextMenu.x, top: contextMenu.y }}
         >
           <div className="px-4 py-2 bg-indigo-500/20 border-b border-indigo-500/30 text-[10px] font-black text-indigo-300 uppercase tracking-widest text-center">
@@ -440,12 +509,10 @@ export const BikeRouteFullMapView = ({ title }) => {
           }`}>
             {isEditing ? (
               <>
-                {/* 우클릭 안내 메시지 삭제 완료 */}
-                
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2 relative">
                   <div className="flex items-center gap-3">
                     <MapPin size={18} className="text-blue-400 shrink-0"/>
-                    <input placeholder="출발지" value={startPoint} onChange={e => setStartPoint(e.target.value)} className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm outline-none text-white"/>
+                    <input placeholder="출발지 (지도 우클릭)" value={startPoint} onChange={e => setStartPoint(e.target.value)} className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm outline-none text-white"/>
                   </div>
                   
                   {waypointPoints.map((wp, idx) => (
@@ -462,16 +529,27 @@ export const BikeRouteFullMapView = ({ title }) => {
                     </div>
                   ))}
 
-                  {waypointPoints.length < 13 && (
-                    <button onClick={() => setWaypointPoints([...waypointPoints, ''])} className="ml-5 flex items-center gap-2 text-xs font-bold tracking-wide text-emerald-400 p-2 hover:bg-white/5 rounded-xl transition-colors w-max">
-                      <Plus size={14} strokeWidth={3}/> 경유지 추가
+                  {/* ✅ 스왑(Swap) 버튼 */}
+                  <div className="flex justify-center -my-1 relative z-10">
+                    <button 
+                      onClick={handleSwapPoints} 
+                      className="bg-slate-800 border border-white/20 p-1.5 rounded-full text-slate-400 hover:text-white hover:bg-slate-700 transition-colors shadow-md"
+                      title="출발/도착 바꾸기"
+                    >
+                      <ArrowUpDown size={14} />
                     </button>
-                  )}
+                  </div>
 
                   <div className="flex items-center gap-3">
                     <Flag size={18} className="text-red-400 shrink-0"/>
-                    <input placeholder="도착지" value={goalPoint} onChange={e => setGoalPoint(e.target.value)} className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm outline-none text-white"/>
+                    <input placeholder="도착지 (지도 우클릭)" value={goalPoint} onChange={e => setGoalPoint(e.target.value)} className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm outline-none text-white"/>
                   </div>
+                  
+                  {waypointPoints.length < 13 && (
+                    <button onClick={() => setWaypointPoints([...waypointPoints, ''])} className="mt-1 flex items-center gap-2 text-xs font-bold tracking-wide text-emerald-400 p-2 hover:bg-white/5 rounded-xl transition-colors w-max">
+                      <Plus size={14} strokeWidth={3}/> 경유지 추가
+                    </button>
+                  )}
                 </div>
 
                 <button 
