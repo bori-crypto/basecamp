@@ -39,14 +39,11 @@ export const BikeRouteFullMapView = ({ title }) => {
     fetch(BIKE_WORKER_URL)
       .then(res => res.json())
       .then(data => {
-        const found = data.find(r => r.title === title);
+        const found = Array.isArray(data) ? data.find(r => r.title === title) : data;
         if (found) {
-          const wps = typeof found.waypoints === 'string' ? JSON.parse(found.waypoints || '[]') : [];
-          setRouteData({ 
-            ...found, 
-            waypoints: wps, 
-            path_data: typeof found.path_data === 'string' ? JSON.parse(found.path_data || '[]') : [] 
-          });
+          const wps = typeof found.waypoints === 'string' ? JSON.parse(found.waypoints || '[]') : found.waypoints || [];
+          const path = typeof found.path_data === 'string' ? JSON.parse(found.path_data || '[]') : found.path_data || [];
+          setRouteData({ ...found, waypoints: wps, path_data: path });
           if (wps.length > 0) {
             setStartPoint(wps[0] || '');
             if (wps.length > 1) {
@@ -239,8 +236,9 @@ export const BikeRouteFullMapView = ({ title }) => {
           if (wpG) { wpsArr.push(`${wpG.lng()},${wpG.lat()}`); validWpsCoords.push(wpG); }
         }
       }
-
-      const res = await fetch(`${BIKE_WORKER_URL}/direction`, {
+      
+      const cleanUrl = BIKE_WORKER_URL.replace(/\/$/, "");
+      const res = await fetch(`${cleanUrl}/direction`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ start: startStr, goal: goalStr, waypoints: wpsArr.join('|') })
@@ -260,7 +258,7 @@ export const BikeRouteFullMapView = ({ title }) => {
       validWpsCoords.forEach((c, i) => updateMarkerAndCoord('waypoint', c, i));
       
       setRouteData(prev => ({ ...prev, waypoints: [startPoint, ...waypointPoints, goalPoint].filter(Boolean), path_data: newPathData }));
-      alert('이륜차 최적 코스 탐색 완료! 🏍️');
+      alert('이륜차 최적 코스 탐색 완료! 🏍️💨');
     } catch (e) { alert('통신 오류 발생!'); } finally { setIsRouting(false); }
   };
 
@@ -274,6 +272,48 @@ export const BikeRouteFullMapView = ({ title }) => {
       });
       if (res.ok) { alert('저장 완료! 💾'); setIsEditing(false); } else alert('저장 실패');
     } catch (e) { alert('네트워크 에러'); }
+  };
+
+  // ✅ GPX/KML 파일 파싱 로직
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target.result;
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(text, "text/xml");
+      const newPath = [];
+      const fileName = file.name.toLowerCase();
+      
+      if (fileName.endsWith('.gpx')) {
+        const trkpts = xmlDoc.getElementsByTagName("trkpt");
+        for (let i = 0; i < trkpts.length; i++) {
+          newPath.push({ lat: parseFloat(trkpts[i].getAttribute("lat")), lng: parseFloat(trkpts[i].getAttribute("lon")) });
+        }
+      } else if (fileName.endsWith('.kml')) {
+        const coordinates = xmlDoc.getElementsByTagName("coordinates");
+        if (coordinates.length > 0) {
+          const coordsText = coordinates[0].textContent.trim();
+          coordsText.split(/\s+/).forEach(pair => {
+            const [lng, lat] = pair.split(',');
+            if (lat && lng) newPath.push({ lat: parseFloat(lat), lng: parseFloat(lng) });
+          });
+        }
+      } else {
+        alert("GPX/KML 파일만 지원합니다."); return;
+      }
+
+      if (newPath.length > 0) {
+        setRouteData(prev => ({ ...prev, path_data: newPath }));
+        alert(`파싱 완료! (좌표 ${newPath.length}개) - 수동 저장을 눌러줘!`);
+      } else {
+        alert("유효한 좌표 데이터를 찾을 수 없어!");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = null; // 파일 투입 초기화
   };
 
   const handleDeleteDetail = async () => {
@@ -306,7 +346,7 @@ export const BikeRouteFullMapView = ({ title }) => {
       </div>
 
       <div className="absolute top-6 left-6 z-20 flex flex-col pointer-events-none">
-        <div className={`pointer-events-auto bg-slate-900/80 backdrop-blur-xl border border-white/10 shadow-2xl flex flex-col transition-all duration-500 overflow-hidden ${isCollapsed ? 'w-48 max-h-[48px] rounded-xl' : 'w-[calc(100vw-3rem)] md:w-96 max-h-[85vh] rounded-3xl'}`}>
+        <div className={`pointer-events-auto bg-slate-900/80 backdrop-blur-xl border border-white/10 shadow-2xl flex flex-col transition-all duration-500 overflow-hidden ${isCollapsed ? 'w-48 max-h-[48px] rounded-xl cursor-pointer' : 'w-[calc(100vw-3rem)] md:w-96 max-h-[85vh] rounded-3xl'}`}>
           <div className={`flex items-center justify-between shrink-0 transition-all ${isCollapsed ? 'px-4 py-3 h-[48px]' : 'px-5 py-4 border-b border-white/10'}`} onClick={() => !isEditing && setIsCollapsed(!isCollapsed)} style={{ cursor: isEditing ? 'default' : 'pointer' }}>
             <div className="flex items-center gap-2 overflow-hidden flex-1">
               {isCollapsed && <MapPin size={14} className="text-indigo-400 shrink-0" />}
@@ -342,7 +382,7 @@ export const BikeRouteFullMapView = ({ title }) => {
                 <button onClick={handleSearchRoutePreview} disabled={isRouting} className="mt-2 w-full bg-emerald-500/20 border border-emerald-500/50 hover:bg-emerald-500/30 text-emerald-400 font-bold py-3 rounded-xl text-sm flex items-center justify-center gap-2"><Route size={18} /> {isRouting ? '교신 중...' : '바이크(이륜차) 길찾기 미리보기'}</button>
                 <textarea placeholder="메모 (노면, 공기압 등)" value={routeData.memo} onChange={e => setRouteData({...routeData, memo: e.target.value})} className="bg-white/5 border border-white/10 rounded-xl p-3 text-sm h-20 outline-none text-slate-300 resize-none" />
                 <div className="flex justify-between items-center mt-2 border-t border-white/10 pt-4">
-                  <label className="text-xs bg-white/10 px-4 py-2.5 rounded-xl cursor-pointer border border-white/10 text-slate-200"><Paperclip size={14} className="inline mr-1" /> 파일 첨부<input type="file" hidden accept=".gpx,.kml" onChange={(e) => {/* GPX 파싱 로직 */}} /></label>
+                  <label className="text-xs bg-white/10 px-4 py-2.5 rounded-xl cursor-pointer border border-white/10 text-slate-200"><Paperclip size={14} className="inline mr-1" /> 파일 첨부<input type="file" hidden accept=".gpx,.kml" onChange={handleFileUpload} /></label>
                   <button onClick={handleSave} className="bg-indigo-500 hover:bg-indigo-600 px-8 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg shadow-indigo-500/30">최종 저장</button>
                 </div>
               </>
@@ -367,7 +407,7 @@ export const BikeRouteFullMapView = ({ title }) => {
 };
 
 // ✅ [2단계] 바이크 코스 리스트 뷰 (메인 페이지)
-export default function Bike({ step, path, onSelect }) {
+export default function Bike({ step, onSelect }) {
   const { BIKE_WORKER_URL, isPrivateMode, adminPassword } = useContext(AppContext);
   const [routes, setRoutes] = useState([]);
   const [newRoute, setNewRoute] = useState('');
@@ -376,7 +416,7 @@ export default function Bike({ step, path, onSelect }) {
     try {
       const res = await fetch(BIKE_WORKER_URL);
       const data = await res.json();
-      setRoutes(data);
+      setRoutes(Array.isArray(data) ? data : []);
     } catch (err) { console.error(err); }
   };
 
@@ -389,7 +429,7 @@ export default function Bike({ step, path, onSelect }) {
       const res = await fetch(BIKE_WORKER_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Admin-Password': adminPassword },
-        body: JSON.stringify({ title: newRoute.trim(), waypoints: [], path_data: [] })
+        body: JSON.stringify({ title: newRoute.trim(), waypoints: [], path_data: [], memo: "" })
       });
       if (res.ok) { fetchRoutes(); setNewRoute(''); }
     } catch (err) { alert("코스 생성 실패"); }
