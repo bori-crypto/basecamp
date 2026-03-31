@@ -2,11 +2,10 @@ import React, { useState, useEffect, useRef, useContext } from 'react';
 import { 
   MapPin, Navigation, Flag, ChevronDown, 
   ChevronUp, Plus, Edit2, Save, Paperclip, Trash2,
-  Layers, AlertTriangle, Route
+  Layers, AlertTriangle 
 } from 'lucide-react';
 import { AppContext } from '../App';
 
-// ✅ [3단계] 바이크 코스 상세 지도 뷰
 export const BikeRouteFullMapView = ({ title }) => {
   const { BIKE_WORKER_URL, isPrivateMode, adminPassword, popPage } = useContext(AppContext);
 
@@ -20,7 +19,6 @@ export const BikeRouteFullMapView = ({ title }) => {
   const [startPoint, setStartPoint] = useState('');
   const [goalPoint, setGoalPoint] = useState('');
   const [waypointPoints, setWaypointPoints] = useState([]);
-  const [isRouting, setIsRouting] = useState(false); // 길찾기 로딩 상태
 
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
@@ -54,7 +52,7 @@ export const BikeRouteFullMapView = ({ title }) => {
       .catch(err => console.error("DB 로드 실패:", err));
   }, [BIKE_WORKER_URL, title]);
 
-  // 2. 네이버 지도 초기화 및 형광색 렌더링
+  // ✅ 2. 네이버 지도 초기화 (오빠의 원본 로직 100% 복구!)
   useEffect(() => {
     if (!mapRef.current || !routeData) return;
     
@@ -88,7 +86,7 @@ export const BikeRouteFullMapView = ({ title }) => {
         polylineInstance.current = new window.naver.maps.Polyline({
           map: mapInstance.current,
           path: path,
-          strokeColor: '#ccff00', // ✅ 야간 시인성 극대화 (형광 라임)
+          strokeColor: '#ccff00', 
           strokeWeight: 8,
           strokeOpacity: 0.9,
           strokeLineJoin: 'round',
@@ -104,96 +102,14 @@ export const BikeRouteFullMapView = ({ title }) => {
     }
   }, [routeData, mapType]); 
 
+  // 지도 타입 토글
   useEffect(() => {
     if (mapInstance.current && window.naver && window.naver.maps) {
       mapInstance.current.setMapTypeId(window.naver.maps.MapTypeId[mapType]);
     }
   }, [mapType]);
 
-  // ✅ 텍스트 주소를 좌표(위경도)로 변환하는 Geocoder 엔진
-  const getGeocode = (query) => {
-    return new Promise((resolve, reject) => {
-      if (!window.naver?.maps?.Service?.geocode) {
-        alert("Geocoding 서비스가 로드되지 않았어! index.html 스크립트에 &submodules=geocoder 를 꼭 추가해 줘!");
-        return reject('No geocoder');
-      }
-      window.naver.maps.Service.geocode({ query }, (status, response) => {
-        if (status !== window.naver.maps.Service.Status.OK) return reject('Geocode Error');
-        if (response.v2.addresses.length > 0) {
-          const { x, y } = response.v2.addresses[0];
-          resolve(`${x},${y}`); // lng, lat 포맷 (네이버 Direction 15 요구 스펙)
-        } else {
-          alert(`"${query}" 장소를 찾을 수 없어! 이름을 살짝 바꿔볼까?`);
-          reject('No results');
-        }
-      });
-    });
-  };
-
-  // ✅ 네이버 길찾기 API 연동 및 D1 자동 저장 로직
-  const handleSearchAndSaveRoute = async () => {
-    if (!startPoint || !goalPoint) {
-      alert('출발지와 도착지는 필수야!');
-      return;
-    }
-
-    setIsRouting(true);
-    try {
-      // 1. 입력된 텍스트들을 위경도로 변환
-      const startCoord = await getGeocode(startPoint);
-      const goalCoord = await getGeocode(goalPoint);
-      
-      const wpsCoords = [];
-      for (const wp of waypointPoints) {
-        if (wp.trim()) wpsCoords.push(await getGeocode(wp.trim()));
-      }
-      const waypointsStr = wpsCoords.join('|');
-
-      // 2. 워커의 /direction 프록시로 방향 탐색 요청
-      const directionUrl = new URL('/direction', BIKE_WORKER_URL).toString();
-      const dirRes = await fetch(directionUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ start: startCoord, goal: goalCoord, waypoints: waypointsStr })
-      });
-      
-      const dirData = await dirRes.json();
-      
-      let newPathData = [];
-      if (dirData.route?.traoptimal?.[0]?.path) {
-        // [lng, lat] 배열을 우리가 쓰는 {lat, lng} 객체 배열로 매핑
-        newPathData = dirData.route.traoptimal[0].path.map(p => ({ lng: p[0], lat: p[1] }));
-      } else {
-        alert("도로를 따라가는 경로를 찾지 못했어!");
-        setIsRouting(false);
-        return;
-      }
-
-      // 3. 방향 탐색 성공 시, D1에 자동 박제 (원스톱 저장)
-      const finalWaypoints = [startPoint, ...waypointPoints, goalPoint].filter(Boolean);
-      const dataToSave = { ...routeData, waypoints: finalWaypoints, path_data: newPathData };
-      
-      const res = await fetch(BIKE_WORKER_URL, {
-        method: dataToSave.id ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Admin-Password': adminPassword },
-        body: JSON.stringify(dataToSave)
-      });
-
-      if (res.ok) {
-        alert('길찾기 및 데이터 자동 저장 완료! 🏍️💨');
-        setRouteData(dataToSave);
-        setIsEditing(false);
-      } else {
-        alert('저장 권한이 없어!');
-      }
-
-    } catch (e) {
-      console.error("길찾기 실패:", e);
-    } finally {
-      setIsRouting(false);
-    }
-  };
-
+  // ✅ GPX / KML 파일 수동 업로드
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -236,7 +152,7 @@ export const BikeRouteFullMapView = ({ title }) => {
     e.target.value = null;
   };
 
-  // 일반 수동 저장 (메모 수정, 파일 업로드 시 사용)
+  // ✅ 수동 저장 (텍스트 포인트, 메모, 업로드한 GPX 저장)
   const handleManualSave = async () => {
     try {
       const finalWaypoints = [startPoint, ...waypointPoints, goalPoint].filter(Boolean);
@@ -279,8 +195,9 @@ export const BikeRouteFullMapView = ({ title }) => {
   if (!routeData) return <div className="p-10 text-center text-white/50">GPS 데이터 교신 중...</div>;
 
   return (
-    <div className="relative w-full h-full overflow-hidden rounded-[2.5rem] text-slate-100 animate-in fade-in duration-700 font-sans shadow-2xl bg-[#0f172a] border border-white/10">
+    <div className="relative flex-1 w-full h-full min-h-[600px] overflow-hidden rounded-[2.5rem] text-slate-100 animate-in fade-in duration-700 font-sans shadow-2xl bg-[#0f172a] border border-white/10">
       
+      {/* 네이버 지도 컨테이너 */}
       <div className="absolute inset-0 z-0 w-full h-full" ref={mapRef} />
 
       {isMapEngineMissing && (
@@ -309,7 +226,6 @@ export const BikeRouteFullMapView = ({ title }) => {
             : 'w-[calc(100vw-3rem)] md:w-96 max-h-[85vh] rounded-3xl'
         }`}>
           
-          {/* 어드민 버튼 포함 안전 헤더 */}
           <div 
             className={`flex items-center justify-between shrink-0 transition-all ${isCollapsed ? 'px-4 py-3 h-[48px]' : 'px-5 py-4 border-b border-white/10'}`}
             onClick={() => !isEditing && setIsCollapsed(!isCollapsed)}
@@ -351,7 +267,6 @@ export const BikeRouteFullMapView = ({ title }) => {
             </div>
           </div>
 
-          {/* 패널 바디 */}
           <div className={`flex flex-col gap-4 transition-all duration-500 overflow-y-auto custom-scrollbar ${
             isCollapsed ? 'opacity-0 p-0 m-0 h-0' : 'opacity-100 p-5 pt-4'
           }`}>
@@ -389,58 +304,53 @@ export const BikeRouteFullMapView = ({ title }) => {
                   </div>
                 </div>
 
-                {/* ✅ 대망의 네이버 실시간 길찾기 & 자동 저장 버튼 */}
-                <button 
-                  onClick={handleSearchAndSaveRoute} 
-                  disabled={isRouting}
-                  className="mt-2 w-full bg-emerald-500/80 hover:bg-emerald-600 disabled:bg-emerald-500/40 text-white font-bold py-3 rounded-xl text-sm transition-all shadow-lg flex items-center justify-center gap-2"
-                >
-                  <Route size={18} />
-                  {isRouting ? '위성 좌표 통신 중...' : '네이버 길찾기 & 자동 저장 🚀'}
-                </button>
+                <div className="flex gap-3">
+                  <input placeholder="일정 (예: 2박 3일)" value={routeData.duration || ''} onChange={e => setRouteData({...routeData, duration: e.target.value})} className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm outline-none text-white"/>
+                  <input placeholder="거리 (예: 300km)" value={routeData.distance || ''} onChange={e => setRouteData({...routeData, distance: e.target.value})} className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm outline-none text-white"/>
+                </div>
 
-                <textarea placeholder="메모 (노면 상태, 공기압 등)" value={routeData.memo} onChange={e => setRouteData({...routeData, memo: e.target.value})} className="bg-white/5 border border-white/10 rounded-xl p-3 text-sm h-20 outline-none resize-none mt-2 custom-scrollbar text-slate-300" />
+                <textarea placeholder="메모 (노면 상태, 공기압 등)" value={routeData.memo} onChange={e => setRouteData({...routeData, memo: e.target.value})} className="bg-white/5 border border-white/10 rounded-xl p-3 text-sm h-20 outline-none resize-none custom-scrollbar text-slate-300" />
 
-                <div className="flex justify-between items-center mt-2 pt-2 border-t border-white/10">
+                <div className="flex justify-between items-center pt-2 border-t border-white/10">
                   <label className="flex items-center gap-2 bg-white/10 hover:bg-white/20 transition-colors px-4 py-2.5 rounded-xl text-sm font-medium cursor-pointer border border-white/10 text-slate-200">
                     <Paperclip size={16} className="text-indigo-400"/> 수동 파일 첨부
                     <input type="file" hidden accept=".gpx,.kml" onChange={handleFileUpload} />
                   </label>
-                  {/* 일반 저장 버튼 (메모만 바꾸거나 GPX 올렸을 때 사용) */}
                   <button onClick={handleManualSave} className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 transition-colors px-6 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/30 text-white">
-                    <Save size={16}/> 수동 저장
+                    <Save size={16}/> 최종 저장
                   </button>
                 </div>
               </>
             ) : (
               <div className="flex flex-col gap-3">
                 {routeData.waypoints?.length > 0 && (
-                  <div className="flex items-center gap-3 text-sm font-medium text-slate-300 bg-white/5 p-3 rounded-xl border border-white/5">
-                    <MapPin size={16} className="text-blue-400 shrink-0"/>
-                    <span className="truncate">{routeData.waypoints[0]}</span>
-                    <Navigation size={14} className="text-slate-500 shrink-0 mx-1"/>
-                    <Flag size={16} className="text-red-400 shrink-0"/>
-                    <span className="truncate">{routeData.waypoints[routeData.waypoints.length - 1]}</span>
+                  <div className="flex flex-col gap-2 bg-white/5 p-3 rounded-xl border border-white/5 text-sm font-bold text-slate-300">
+                    <div className="flex items-center gap-2"><MapPin size={14} className="text-blue-400"/> {routeData.waypoints[0]}</div>
+                    {routeData.waypoints.length > 2 && <div className="pl-1.5 ml-1.5 border-l border-white/10 text-xs text-emerald-400">경유지 {routeData.waypoints.length - 2}곳</div>}
+                    <div className="flex items-center gap-2"><Flag size={14} className="text-red-400"/> {routeData.waypoints[routeData.waypoints.length - 1]}</div>
                   </div>
                 )}
+                
+                <div className="flex gap-4 text-sm font-black text-indigo-300 pt-2">
+                  <span className="flex items-center gap-1">🗓️ {routeData.duration || '일정 미정'}</span>
+                  <span className="flex items-center gap-1">📏 {routeData.distance || '거리 미상'}</span>
+                </div>
 
                 {routeData.memo && (
-                  <div className="bg-indigo-500/10 border border-indigo-500/20 p-4 rounded-xl text-sm text-indigo-100/90 leading-relaxed font-medium italic">
+                  <div className="bg-indigo-500/10 border border-indigo-500/20 p-4 rounded-xl text-sm text-indigo-100/90 leading-relaxed font-medium italic mt-2">
                     "{routeData.memo}"
                   </div>
                 )}
               </div>
             )}
           </div>
-
         </div>
       </div>
     </div>
   );
 };
 
-// ✅ [2단계] 바이크 코스 리스트 뷰
-export default function Bike({ step, path, onSelect }) {
+export default function Bike({ onSelect }) {
   const { BIKE_WORKER_URL, isPrivateMode, adminPassword } = useContext(AppContext);
   const [routes, setRoutes] = useState([]);
   const [newRoute, setNewRoute] = useState('');
@@ -495,7 +405,7 @@ export default function Bike({ step, path, onSelect }) {
   };
 
   return (
-    <div className="flex flex-col gap-5 animate-in fade-in duration-300 h-full">
+    <div className="flex flex-col gap-5 animate-in fade-in duration-300 h-full p-2">
       {isPrivateMode && (
         <form onSubmit={handleAdd} className="flex gap-2">
           <input type="text" value={newRoute} onChange={(e) => setNewRoute(e.target.value)} placeholder="새로운 코스 이름 입력 후 엔터" className="flex-1 bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-indigo-500/50 transition-all shadow-sm" />
