@@ -1,30 +1,29 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { 
-  MapPin, Navigation, Flag, ChevronDown, 
-  ChevronUp, Plus, Edit2, Save, Paperclip, Trash2,
-  Layers, AlertTriangle 
+  MapPin, Navigation, Calendar, Flag, ChevronDown, 
+  ChevronUp, Plus, Edit2, Save, Layers, AlertTriangle, Paperclip, Trash2
 } from 'lucide-react';
 import { AppContext } from '../App';
 
 export const BikeRouteFullMapView = ({ title }) => {
   const { BIKE_WORKER_URL, isPrivateMode, adminPassword, popPage } = useContext(AppContext);
-
+  
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [mapType, setMapType] = useState('SATELLITE');
-  
+  const [mapType, setMapType] = useState('SATELLITE'); 
   const [routeData, setRouteData] = useState(null);
   const [isMapEngineMissing, setIsMapEngineMissing] = useState(false);
   
+  // ✅ 최신 UI용 개별 포인트 상태 관리
   const [startPoint, setStartPoint] = useState('');
   const [goalPoint, setGoalPoint] = useState('');
   const [waypointPoints, setWaypointPoints] = useState([]);
-
+  
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
   const polylineInstance = useRef(null);
 
-  // 1. D1 DB 로드
+  // 1. D1 DB 로드 및 포인트 분배
   useEffect(() => {
     if (!BIKE_WORKER_URL) return;
     fetch(BIKE_WORKER_URL)
@@ -33,11 +32,12 @@ export const BikeRouteFullMapView = ({ title }) => {
         const found = data.find(r => r.title === title);
         if (found) {
           const wps = typeof found.waypoints === 'string' ? JSON.parse(found.waypoints || '[]') : [];
-          setRouteData({ 
-            ...found, 
-            waypoints: wps, 
-            path_data: typeof found.path_data === 'string' ? JSON.parse(found.path_data || '[]') : [] 
+          setRouteData({
+            ...found,
+            waypoints: wps,
+            path_data: typeof found.path_data === 'string' ? JSON.parse(found.path_data || '[]') : []
           });
+          
           if (wps.length > 0) {
             setStartPoint(wps[0] || '');
             if (wps.length > 1) {
@@ -52,7 +52,7 @@ export const BikeRouteFullMapView = ({ title }) => {
       .catch(err => console.error("DB 로드 실패:", err));
   }, [BIKE_WORKER_URL, title]);
 
-  // ✅ 2. 네이버 지도 초기화 (오빠의 원본 로직 100% 복구!)
+  // 2. 네이버 지도 초기화 및 렌더링 (🔥 오빠의 예전 성공 코드 100% 적용)
   useEffect(() => {
     if (!mapRef.current || !routeData) return;
     
@@ -71,9 +71,20 @@ export const BikeRouteFullMapView = ({ title }) => {
           mapTypeId: window.naver.maps.MapTypeId[mapType],
           disableKineticPan: false,
         });
+
+        // 애니메이션 도중 지도가 크기를 0으로 인식하는 문제 해결 (충격 요법)
+        setTimeout(() => {
+          if (mapInstance.current) {
+            window.dispatchEvent(new Event('resize'));
+            mapInstance.current.autoResize();
+          }
+        }, 300);
+
       } catch (error) {
         console.error("네이버 지도 초기화 에러:", error);
       }
+    } else {
+      mapInstance.current.setMapTypeId(window.naver.maps.MapTypeId[mapType]);
     }
 
     if (polylineInstance.current) {
@@ -86,7 +97,7 @@ export const BikeRouteFullMapView = ({ title }) => {
         polylineInstance.current = new window.naver.maps.Polyline({
           map: mapInstance.current,
           path: path,
-          strokeColor: '#ccff00', 
+          strokeColor: '#ccff00', // 형광 라임색
           strokeWeight: 8,
           strokeOpacity: 0.9,
           strokeLineJoin: 'round',
@@ -95,21 +106,20 @@ export const BikeRouteFullMapView = ({ title }) => {
 
         const bounds = new window.naver.maps.LatLngBounds();
         path.forEach(p => bounds.extend(p));
-        mapInstance.current.fitBounds(bounds, { margin: 50 });
+        
+        setTimeout(() => {
+          if (mapInstance.current) {
+            mapInstance.current.fitBounds(bounds, { margin: 50 });
+          }
+        }, 400);
+
       } catch (error) {
         console.error("경로 렌더링 에러:", error);
       }
     }
   }, [routeData, mapType]); 
 
-  // 지도 타입 토글
-  useEffect(() => {
-    if (mapInstance.current && window.naver && window.naver.maps) {
-      mapInstance.current.setMapTypeId(window.naver.maps.MapTypeId[mapType]);
-    }
-  }, [mapType]);
-
-  // ✅ GPX / KML 파일 수동 업로드
+  // ✅ GPX / KML 수동 파일 업로드 버튼 로직
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -152,24 +162,24 @@ export const BikeRouteFullMapView = ({ title }) => {
     e.target.value = null;
   };
 
-  // ✅ 수동 저장 (텍스트 포인트, 메모, 업로드한 GPX 저장)
   const handleManualSave = async () => {
     try {
       const finalWaypoints = [startPoint, ...waypointPoints, goalPoint].filter(Boolean);
       const dataToSave = { ...routeData, waypoints: finalWaypoints };
-      
+
+      const method = dataToSave.id ? 'PUT' : 'POST';
       const res = await fetch(BIKE_WORKER_URL, {
-        method: dataToSave.id ? 'PUT' : 'POST',
+        method,
         headers: { 'Content-Type': 'application/json', 'X-Admin-Password': adminPassword },
         body: JSON.stringify(dataToSave)
       });
-
+      
       if (res.ok) {
         alert('저장 완료! 💾');
         setRouteData(dataToSave);
         setIsEditing(false);
       } else {
-        alert('저장 권한이 없어!');
+        alert('저장 권한 부족!');
       }
     } catch (e) {
       alert('네트워크 에러 발생!');
@@ -195,9 +205,11 @@ export const BikeRouteFullMapView = ({ title }) => {
   if (!routeData) return <div className="p-10 text-center text-white/50">GPS 데이터 교신 중...</div>;
 
   return (
-    <div className="relative flex-1 w-full h-full min-h-[600px] overflow-hidden rounded-[2.5rem] text-slate-100 animate-in fade-in duration-700 font-sans shadow-2xl bg-[#0f172a] border border-white/10">
-      
-      {/* 네이버 지도 컨테이너 */}
+    <div 
+      className="relative flex-1 w-full h-full min-h-[600px] overflow-hidden rounded-[2.5rem] text-slate-100 animate-in fade-in duration-700 font-sans shadow-2xl bg-[#0f172a] border border-white/10"
+      onContextMenu={e => e.preventDefault()}
+    >
+      {/* 🗺️ 1층 (바닥): 네이버 지도 상자 */}
       <div className="absolute inset-0 z-0 w-full h-full" ref={mapRef} />
 
       {isMapEngineMissing && (
@@ -209,6 +221,7 @@ export const BikeRouteFullMapView = ({ title }) => {
         </div>
       )}
 
+      {/* 🎛️ 2층 (공중 우측): 지도 토글 버튼 */}
       <div className="absolute top-6 right-6 z-20 flex gap-2">
         <button 
           onClick={() => setMapType(prev => prev === 'NORMAL' ? 'SATELLITE' : 'NORMAL')}
@@ -219,6 +232,7 @@ export const BikeRouteFullMapView = ({ title }) => {
         </button>
       </div>
 
+      {/* 📊 2층 (공중 좌측): 최신형 요약/편집창 */}
       <div className="absolute top-6 left-6 z-20 flex flex-col pointer-events-none">
         <div className={`pointer-events-auto bg-slate-900/80 backdrop-blur-xl border border-white/10 shadow-2xl flex flex-col transition-all duration-500 overflow-hidden ${
           isCollapsed 
@@ -226,6 +240,7 @@ export const BikeRouteFullMapView = ({ title }) => {
             : 'w-[calc(100vw-3rem)] md:w-96 max-h-[85vh] rounded-3xl'
         }`}>
           
+          {/* 헤더 */}
           <div 
             className={`flex items-center justify-between shrink-0 transition-all ${isCollapsed ? 'px-4 py-3 h-[48px]' : 'px-5 py-4 border-b border-white/10'}`}
             onClick={() => !isEditing && setIsCollapsed(!isCollapsed)}
@@ -267,6 +282,7 @@ export const BikeRouteFullMapView = ({ title }) => {
             </div>
           </div>
 
+          {/* 바디 영역 (편집 모드 & 보기 모드) */}
           <div className={`flex flex-col gap-4 transition-all duration-500 overflow-y-auto custom-scrollbar ${
             isCollapsed ? 'opacity-0 p-0 m-0 h-0' : 'opacity-100 p-5 pt-4'
           }`}>
@@ -313,11 +329,11 @@ export const BikeRouteFullMapView = ({ title }) => {
 
                 <div className="flex justify-between items-center pt-2 border-t border-white/10">
                   <label className="flex items-center gap-2 bg-white/10 hover:bg-white/20 transition-colors px-4 py-2.5 rounded-xl text-sm font-medium cursor-pointer border border-white/10 text-slate-200">
-                    <Paperclip size={16} className="text-indigo-400"/> 수동 파일 첨부
+                    <Paperclip size={16} className="text-indigo-400"/> GPX 첨부
                     <input type="file" hidden accept=".gpx,.kml" onChange={handleFileUpload} />
                   </label>
                   <button onClick={handleManualSave} className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 transition-colors px-6 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/30 text-white">
-                    <Save size={16}/> 최종 저장
+                    <Save size={16}/> 코스 저장
                   </button>
                 </div>
               </>
