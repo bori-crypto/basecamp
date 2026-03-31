@@ -25,12 +25,12 @@ export default {
         }
       }
 
-      // [POST] 새 투어 코스 저장
+      // [POST] 신규 저장
       if (request.method === "POST") {
         if (!checkAuth(request)) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
         const b = await request.json();
         
-        const stmt = env.DB.prepare(
+        await env.DB.prepare(
           "INSERT INTO bike_routes (title, duration, distance, waypoints, memo, path_data) VALUES (?, ?, ?, ?, ?, ?)"
         ).bind(
           b.title || "새 코스",
@@ -39,33 +39,26 @@ export default {
           JSON.stringify(b.waypoints || []),
           b.memo || "",
           JSON.stringify(b.path_data || [])
-        );
-        await stmt.run();
+        ).run();
+        
         return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
       }
 
-      // [PUT] 기존 투어 코스 수정
+      // [PUT] 수정
       if (request.method === "PUT") {
         if (!checkAuth(request)) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
         const b = await request.json();
-        if (!b.id) return new Response("Missing ID", { status: 400, headers: corsHeaders });
-
-        const stmt = env.DB.prepare(
+        
+        await env.DB.prepare(
           "UPDATE bike_routes SET title=?, duration=?, distance=?, waypoints=?, memo=?, path_data=? WHERE id=?"
         ).bind(
-          b.title,
-          b.duration,
-          b.distance,
-          JSON.stringify(b.waypoints || []),
-          b.memo,
-          JSON.stringify(b.path_data || []),
-          b.id
-        );
-        await stmt.run();
+          b.title, b.duration, b.distance, JSON.stringify(b.waypoints || []), b.memo, JSON.stringify(b.path_data || []), b.id
+        ).run();
+        
         return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
       }
 
-      // [DELETE] 투어 코스 삭제
+      // [DELETE] 삭제
       if (request.method === "DELETE") {
         if (!checkAuth(request)) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
         const id = url.searchParams.get("id");
@@ -74,7 +67,6 @@ export default {
       }
 
       return new Response("Not Found", { status: 404, headers: corsHeaders });
-
     } catch (err) {
       return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
     }
