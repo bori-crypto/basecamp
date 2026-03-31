@@ -11,49 +11,68 @@ export default {
     if (request.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
     try {
-      // ✅ Directions 5 엔진으로 완전 교체
-      if (request.method === "POST" && url.pathname.includes("direction")) {
-        const { start, goal, waypoints } = await request.json();
-        
-        // 백틱(`) 사용 엄격 준수
-        let naverUrl = `https://naveropenapi.apigw.ntruss.com/map-direction/v1/driving?start=${start}&goal=${goal}&option=traavoidcaronly`;
-        if (waypoints) naverUrl += `&waypoints=${encodeURIComponent(waypoints)}`;
-
-        const naverRes = await fetch(naverUrl, {
-          method: "GET",
-          headers: { 
-            "X-NCP-APIGW-API-KEY-ID": env.NAVER_CLIENT_ID.trim(), 
-            "X-NCP-APIGW-API-KEY": env.NAVER_CLIENT_SECRET.trim(),
-            "Referer": "https://bori.pages.dev/" 
-          }
-        });
-
-        const data = await naverRes.json();
-        if (!naverRes.ok) return new Response(JSON.stringify({ error: "NAVER_FAIL", detail: data.message || "인증 거절" }), { status: naverRes.status, headers: corsHeaders });
-        return new Response(JSON.stringify(data), { headers: corsHeaders });
-      }
-
-      // --- D1 DB CRUD ---
+      // ✅ [중요] 네이버 길찾기 API 호출 부분은 삭제됨 (D1 DB 전용)
+      
       const checkAuth = (req) => req.headers.get("X-Admin-Password") === env.ADMIN_SECURE;
+
       if (request.method === "GET") {
         const id = url.searchParams.get("id");
-        const results = id ? await env.DB.prepare("SELECT * FROM bike_routes WHERE id = ?").bind(id).first() : (await env.DB.prepare("SELECT * FROM bike_routes ORDER BY created_at DESC").all()).results;
-        return new Response(JSON.stringify(results), { headers: corsHeaders });
+        if (id) {
+          const result = await env.DB.prepare("SELECT * FROM bike_routes WHERE id = ?").bind(id).first();
+          return new Response(JSON.stringify(result || {}), { headers: corsHeaders });
+        } else {
+          // 오빠가 올린 최신 사진처럼 created_at 내림차순 정렬
+          const { results } = await env.DB.prepare("SELECT * FROM bike_routes ORDER BY created_at DESC").all();
+          return new Response(JSON.stringify(results), { headers: corsHeaders });
+        }
       }
+
       if (request.method === "POST") {
         if (!checkAuth(request)) return new Response("Unauthorized", { status: 401 });
-        const b = await request.json();
-        await env.DB.prepare("INSERT INTO bike_routes (title, waypoints, path_data, memo) VALUES (?, ?, ?, ?)").bind(b.title, JSON.stringify(b.waypoints || []), JSON.stringify(b.path_data || []), b.memo || "").run();
+        const body = await request.json();
+        
+        // D1 DB 컬럼에 맞게 데이터 준비
+        const stmt = env.DB.prepare(
+          "INSERT INTO bike_routes (title, duration, distance, points, memo, path_data) VALUES (?, ?, ?, ?, ?, ?)"
+        ).bind(
+          body.title || "새로운 코스",
+          body.duration || "",
+          body.distance || "",
+          JSON.stringify(body.points || {}), // 마커 좌표 (Start, End, Vias)
+          body.memo || "",
+          JSON.stringify(body.path_data || []) // GPX에서 추출한 수천 개의 LatLng 좌표
+        );
+        
+        await stmt.run();
         return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
       }
+
+      if (request.method === "PUT") {
+        if (!checkAuth(request)) return new Response("Unauthorized", { status: 401 });
+        const body = await request.json();
+        if (!body.id) return new Response("Missing ID", { status: 400 });
+
+        const stmt = env.DB.prepare(
+          "UPDATE bike_routes SET title=?, duration=?, distance=?, points=?, memo=?, path_data=? WHERE id=?"
+        ).bind(
+          body.title, body.duration, body.distance, JSON.stringify(body.points || {}), body.memo, JSON.stringify(body.path_data || []), body.id
+        );
+        
+        await stmt.run();
+        return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+      }
+
       if (request.method === "DELETE") {
         if (!checkAuth(request)) return new Response("Unauthorized", { status: 401 });
-        await env.DB.prepare("DELETE FROM bike_routes WHERE id=?").bind(url.searchParams.get("id")).run();
+        const id = url.searchParams.get("id");
+        await env.DB.prepare("DELETE FROM bike_routes WHERE id=?").bind(id).run();
         return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
       }
+
       return new Response("Not Found", { status: 404, headers: corsHeaders });
+
     } catch (err) {
-      return new Response(JSON.stringify({ error: "CRASH", detail: err.message }), { status: 500, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
     }
   }
 };
