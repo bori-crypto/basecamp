@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { 
   MapPin, Flag, ChevronDown, ChevronUp, Plus, Edit2, 
-  Trash2, Layers, Save, Paperclip, Calendar, Navigation, AlertTriangle
+  Trash2, Layers, Save, Paperclip, Calendar, Navigation, AlertTriangle, UploadCloud
 } from 'lucide-react';
 import { AppContext } from '../App';
 
@@ -15,6 +15,7 @@ export const BikeRouteFullMapView = ({ title }) => {
   const [routeData, setRouteData] = useState(null);
   const [isMapEngineMissing, setIsMapEngineMissing] = useState(false);
   
+  // 마커 노드 상태 관리
   const [startNode, setStartNode] = useState(null);
   const [goalNode, setGoalNode] = useState(null);
   const [viaNodes, setViaNodes] = useState([]);
@@ -49,33 +50,48 @@ export const BikeRouteFullMapView = ({ title }) => {
       .catch(err => console.error("DB 로드 에러:", err));
   }, [BIKE_WORKER_URL, title]);
 
-  // 2. 지도 초기화 (데이터 유무 상관없이 즉시 렌더링)
+  // 2. 네이버 지도 초기화 및 강제 리사이즈 (🔥 오빠 코드 이식 완료)
   useEffect(() => {
     if (!mapRef.current) return;
+    
     if (!window.naver || !window.naver.maps) {
       setIsMapEngineMissing(true);
       return;
     }
     setIsMapEngineMissing(false);
 
-    if (!mapInstance.current) {
-      mapInstance.current = new window.naver.maps.Map(mapRef.current, {
-        center: new window.naver.maps.LatLng(36.3504, 127.3845),
-        zoom: 7,
-        mapTypeId: window.naver.maps.MapTypeId[mapType],
-        disableKineticPan: false,
-      });
+    if (!mapInstance.current || mapRef.current.childNodes.length === 0) {
+      try {
+        mapInstance.current = new window.naver.maps.Map(mapRef.current, {
+          center: new window.naver.maps.LatLng(36.3504, 127.3845),
+          zoom: 7,
+          mapTypeId: window.naver.maps.MapTypeId[mapType],
+          disableKineticPan: false,
+        });
 
-      window.naver.maps.Event.addListener(mapInstance.current, 'rightclick', (e) => {
-        setContextMenu({ x: e.pointerEvent.clientX, y: e.pointerEvent.clientY, latlng: e.coord });
-      });
-      window.naver.maps.Event.addListener(mapInstance.current, 'click', () => setContextMenu(null));
+        // 🔥 [충격 요법] 애니메이션 도중 지도가 크기를 0으로 인식하는 문제 해결
+        setTimeout(() => {
+          if (mapInstance.current) {
+            window.dispatchEvent(new Event('resize'));
+            mapInstance.current.autoResize();
+          }
+        }, 300);
+
+        // 우클릭 이벤트
+        window.naver.maps.Event.addListener(mapInstance.current, 'rightclick', (e) => {
+          setContextMenu({ x: e.pointerEvent.clientX, y: e.pointerEvent.clientY, latlng: e.coord });
+        });
+        window.naver.maps.Event.addListener(mapInstance.current, 'click', () => setContextMenu(null));
+
+      } catch (error) {
+        console.error("네이버 지도 초기화 에러:", error);
+      }
     } else {
       mapInstance.current.setMapTypeId(window.naver.maps.MapTypeId[mapType]);
     }
   }, [mapType]);
 
-  // 3. 데이터에 기반한 선(GPX)과 마커 렌더링
+  // 3. 선(GPX)과 마커 렌더링
   useEffect(() => {
     if (!mapInstance.current || !routeData) return;
 
@@ -91,9 +107,16 @@ export const BikeRouteFullMapView = ({ title }) => {
         strokeOpacity: 0.9,
         strokeLineJoin: 'round'
       });
+      
       const bounds = new window.naver.maps.LatLngBounds();
       pathCoords.forEach(p => bounds.extend(p));
-      mapInstance.current.fitBounds(bounds, { margin: 50 });
+      
+      // 🔥 안정성을 위해 바운딩도 딜레이 포커싱
+      setTimeout(() => {
+        if (mapInstance.current) {
+          mapInstance.current.fitBounds(bounds, { margin: 50 });
+        }
+      }, 400);
     }
 
     // 마커 그리기
@@ -148,13 +171,13 @@ export const BikeRouteFullMapView = ({ title }) => {
 
     if (type === 'start') setStartNode(node);
     if (type === 'goal') setGoalNode(node);
-    if (type === 'via') setViaNodes([...viaNodes, node]); // 무제한 경유지 누적
+    if (type === 'via') setViaNodes([...viaNodes, node]);
   };
 
-  // GPX 멀티 업로드 파싱
+  // GPX 멀티 업로드 및 드롭 처리
   const handleFileUpload = (e) => {
-    const files = e.target.files;
-    if (!files.length) return;
+    const files = e.target.files || e.dataTransfer?.files;
+    if (!files || !files.length) return;
     
     Array.from(files).forEach(file => {
       const reader = new FileReader();
@@ -184,8 +207,14 @@ export const BikeRouteFullMapView = ({ title }) => {
       };
       reader.readAsText(file);
     });
-    e.target.value = null; 
+    if (e.target.value) e.target.value = null; 
   };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    if (isEditing) handleFileUpload(e);
+  };
+  const handleDragOver = (e) => e.preventDefault();
 
   const handleSave = async () => {
     try {
@@ -201,12 +230,8 @@ export const BikeRouteFullMapView = ({ title }) => {
       if (res.ok) { 
         alert('저장 완료! 💾'); 
         setIsEditing(false); 
-      } else { 
-        alert('저장 권한이 없습니다.'); 
-      }
-    } catch (e) { 
-      alert('네트워크 에러 발생'); 
-    }
+      } else { alert('저장 권한이 없습니다.'); }
+    } catch (e) { alert('네트워크 에러 발생'); }
   };
 
   const handleDelete = async () => {
@@ -216,15 +241,30 @@ export const BikeRouteFullMapView = ({ title }) => {
   };
 
   return (
-    <div className="relative w-full h-full bg-[#0f172a] overflow-hidden rounded-[2.5rem] border border-white/10 shadow-2xl" onContextMenu={e => e.preventDefault()}>
-      {/* 지도 렌더링 컨테이너 */}
-      <div className="absolute inset-0 z-0" ref={mapRef} />
+    <div 
+      // 🔥 오빠의 방어막: min-h-[600px]와 flex-1 으로 상자 크기를 빵빵하게 유지
+      className="relative flex-1 w-full h-full min-h-[600px] overflow-hidden rounded-[2.5rem] bg-[#0f172a] border border-white/10 shadow-2xl animate-in fade-in duration-700" 
+      onContextMenu={e => e.preventDefault()}
+      onDrop={handleDrop}
+      onDragOver={handleDragOver}
+    >
+      {/* 🗺️ 1층 (바닥): 네이버 지도 캔버스 */}
+      <div className="absolute inset-0 z-0 w-full h-full" ref={mapRef} />
 
       {isMapEngineMissing && (
         <div className="absolute inset-0 z-[1] flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="text-center animate-pulse flex flex-col items-center p-8 bg-slate-900/60 rounded-3xl border border-white/10 shadow-2xl">
             <AlertTriangle size={48} className="mb-4 text-amber-500/80" />
             <p className="text-slate-300 font-black tracking-widest uppercase text-sm">지도 엔진 연결 대기 중...</p>
+          </div>
+        </div>
+      )}
+
+      {isEditing && (
+        <div className="absolute inset-0 z-[5] pointer-events-none flex items-center justify-center bg-black/20 backdrop-blur-[2px] border-4 border-dashed border-indigo-500/50 rounded-[2.5rem] m-2">
+          <div className="bg-slate-900/80 px-6 py-4 rounded-2xl flex items-center gap-3 shadow-2xl">
+            <UploadCloud className="text-indigo-400" size={24} />
+            <span className="font-bold text-white tracking-widest text-sm">GPX/KML 파일을 이 화면에 던지세요 (Drag & Drop)</span>
           </div>
         </div>
       )}
@@ -282,7 +322,7 @@ export const BikeRouteFullMapView = ({ title }) => {
                 <textarea placeholder="메모 (안전 주의사항 등)" value={routeData?.memo || ''} onChange={e => setRouteData({...routeData, memo: e.target.value})} className="bg-white/5 border border-white/10 rounded-xl p-3 text-sm h-24 text-slate-300 resize-none outline-none" />
                 
                 <div className="flex justify-between items-center mt-2 border-t border-white/10 pt-4">
-                  <label className="text-xs bg-emerald-500/10 hover:bg-emerald-500/20 px-4 py-2.5 rounded-xl cursor-pointer border border-emerald-500/30 text-emerald-400 font-bold transition-all"><Paperclip size={14} className="inline mr-1" /> GPX 누적 추가<input type="file" multiple hidden accept=".gpx,.kml" onChange={handleFileUpload} /></label>
+                  <label className="text-xs bg-emerald-500/10 hover:bg-emerald-500/20 px-4 py-2.5 rounded-xl cursor-pointer border border-emerald-500/30 text-emerald-400 font-bold transition-all"><Paperclip size={14} className="inline mr-1" /> GPX 누적 첨부<input type="file" multiple hidden accept=".gpx,.kml" onChange={handleFileUpload} /></label>
                   <button onClick={handleSave} className="bg-indigo-500 hover:bg-indigo-600 px-6 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg transition-all">최종 저장</button>
                 </div>
               </>
