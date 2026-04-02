@@ -29,7 +29,7 @@ export const BikeRouteFullMapView = ({ title }) => {
   const markersRef = useRef({ start: null, goal: null, waypoints: [] });
   const coordsRef = useRef({ start: null, goal: null, waypoints: [] });
 
-  // ✅ 리액트 클로저(Closure) 덫 방지용 Ref: 이벤트 리스너가 항상 최신 isEditing 값을 알 수 있게 함
+  // ✅ 오빠의 우클릭 코드가 꼬이지 않도록 돕는 안전 메모리 장치
   const isEditingRef = useRef(isEditing);
   useEffect(() => {
     isEditingRef.current = isEditing;
@@ -60,60 +60,56 @@ export const BikeRouteFullMapView = ({ title }) => {
       .catch(err => console.error("DB 로드 실패:", err));
   }, [BIKE_WORKER_URL, title]);
 
-  // ✅ [엔진 1] 네이버 지도 최초 생성 및 이벤트 부착 (단 1번만 실행됨)
+  // 2. ✅ 오빠의 완벽했던 오리지널 네이버 지도 엔진 복구
   useEffect(() => {
-    if (!mapRef.current || !window.naver || !window.naver.maps) {
-      if(!window.naver) setIsMapEngineMissing(true);
+    if (!mapRef.current || !routeData) return;
+    
+    if (!window.naver || !window.naver.maps) {
+      setIsMapEngineMissing(true);
       return;
     }
     setIsMapEngineMissing(false);
 
+    // 지도 상자가 비어있으면 새로 생성
     if (!mapInstance.current || mapRef.current.childNodes.length === 0) {
       mapInstance.current = new window.naver.maps.Map(mapRef.current, {
         center: new window.naver.maps.LatLng(36.3504, 127.3845),
         zoom: 7,
-        mapTypeId: window.naver.maps.MapTypeId.SATELLITE,
+        mapTypeId: window.naver.maps.MapTypeId[mapType],
         disableKineticPan: false,
       });
 
-      // 🖱️ 데스크톱 우클릭 이벤트
+      // 🖱️ 오빠가 검증했던 PC 우클릭 센서 (isEditingRef로 잠금장치만 걸어둠)
       window.naver.maps.Event.addListener(mapInstance.current, 'rightclick', (e) => {
         if (!isEditingRef.current) return;
-        const clientX = e.domEvent ? e.domEvent.clientX : (e.pointerEvent ? e.pointerEvent.clientX : 0);
-        const clientY = e.domEvent ? e.domEvent.clientY : (e.pointerEvent ? e.pointerEvent.clientY : 0);
-        if (clientX > 0) setContextMenu({ x: clientX, y: clientY, latlng: e.coord });
+        setContextMenu({ x: e.pointerEvent.clientX, y: e.pointerEvent.clientY, latlng: e.coord });
       });
 
-      // 📱 모바일 롱탭 이벤트
+      // 📱 오빠가 검증했던 모바일 롱탭 센서
       window.naver.maps.Event.addListener(mapInstance.current, 'longtap', (e) => {
         if (!isEditingRef.current) return;
-        const clientX = e.domEvent ? e.domEvent.clientX : (e.pointerEvent ? e.pointerEvent.clientX : 0);
-        const clientY = e.domEvent ? e.domEvent.clientY : (e.pointerEvent ? e.pointerEvent.clientY : 0);
-        if (clientX > 0) setContextMenu({ x: clientX, y: clientY, latlng: e.coord });
+        setContextMenu({ x: e.pointerEvent.clientX, y: e.pointerEvent.clientY, latlng: e.coord });
       });
 
-      // 메뉴 닫기
       window.naver.maps.Event.addListener(mapInstance.current, 'click', () => setContextMenu(null));
       window.naver.maps.Event.addListener(mapInstance.current, 'dragstart', () => setContextMenu(null));
-    }
-  }, []); // 의존성 배열을 비워서 무한 렌더링 충돌 완벽 차단
 
-  // ✅ [엔진 2] 지도 타입(위성/일반) 변경 전용 엔진
-  useEffect(() => {
-    if (mapInstance.current && window.naver && window.naver.maps) {
+      // 화면 리사이즈 찌그러짐 방지 로직 복구
+      setTimeout(() => {
+        if (mapInstance.current) {
+          window.dispatchEvent(new Event('resize'));
+          mapInstance.current.autoResize();
+        }
+      }, 300);
+    } else {
+      // 맵이 이미 있으면 타입(위성/일반)만 업데이트
       mapInstance.current.setMapTypeId(window.naver.maps.MapTypeId[mapType]);
     }
-  }, [mapType]);
 
-  // ✅ [엔진 3] 경로(Polyline) 그리기 전용 엔진
-  useEffect(() => {
-    if (!mapInstance.current || !routeData || !window.naver) return;
+    // 경로 초기화 및 다시 그리기
+    if (polylineInstance.current) polylineInstance.current.setMap(null);
 
-    if (polylineInstance.current) {
-      polylineInstance.current.setMap(null);
-    }
-
-    if (routeData.path_data?.length > 0) {
+    if (routeData.path_data?.length > 0 && mapInstance.current) {
       const path = routeData.path_data.map(p => new window.naver.maps.LatLng(p.lat, p.lng));
       polylineInstance.current = new window.naver.maps.Polyline({
         map: mapInstance.current,
@@ -129,7 +125,7 @@ export const BikeRouteFullMapView = ({ title }) => {
       path.forEach(p => bounds.extend(p));
       mapInstance.current.fitBounds(bounds, { margin: 50 });
     }
-  }, [routeData?.path_data]); // path_data가 바뀔 때만 다시 그림
+  }, [routeData, mapType]); // 🚨 이게 핵심! 오리지널 의존성 배열로 돌려놔서 빈 화면 버그 타파!
 
   // =========================================================
 
