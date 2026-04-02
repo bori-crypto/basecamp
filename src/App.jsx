@@ -3,7 +3,7 @@ import {
   Camera, Map as MapIcon, BarChart2,
   Shield, ShieldOff, ChevronRight,
   Settings, Database, Server, Clock,
-  ChevronLeft, Home, Layers, Lock, CloudSun, TrendingUp, DollarSign
+  ChevronLeft, Home, Layers, Lock, CloudSun, TrendingUp, DollarSign, Key
 } from 'lucide-react';
 
 import Regiona from './Regiona';
@@ -19,21 +19,24 @@ export const AppProvider = ({ children }) => {
   const [history, setHistory] = useState([{ id: 'home', title: 'Dashboard', icon: Home }]);
   const [realTimeData, setRealTimeData] = useState(null);
 
-  // ✅ 핵심: B구역이 화면에서 사라져도 상태를 기억하도록 사령부에 메모리 공간 추가!
+  // ✅ B구역 메모리 공급용 상태
   const [regionBState, setRegionBState] = useState({ step: 0, path: [], selectedCategory: null });
+
+  // ✅ 커스텀 로그인 모달 상태 추가 (prompt 대체)
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   const WORKER_URL = 'https://sparkling-credit-38ce.borimundi.workers.dev';
   const RUNNING_WORKER_URL = 'https://basecamp-run-bridge.borimundi.workers.dev';
-  
-  // ✅ 추가: 방금 배포한 바이크 API 워커 주소 연결
   const BIKE_WORKER_URL = 'https://basecamp-bike-api.borimundi.workers.dev';
 
+  // ✅ 한 번만 로그인되도록 인증 로직 수정
   const fetchDashboardData = async (password = adminPassword) => {
     try {
       const headers = { "Content-Type": "application/json" };
       if (password) headers["X-Admin-Password"] = password;
 
       const response = await fetch(WORKER_URL, { headers });
+      
       if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
           throw new Error('암호가 올바르지 않습니다.');
@@ -48,35 +51,33 @@ export const AppProvider = ({ children }) => {
         if (Array.isArray(json.todo)) {
           setIsPrivateMode(true);
           setAdminPassword(password);
+          setShowLoginModal(false); // 로그인 성공 시 모달 닫기
+          return true; // 성공 반환
         } else {
-          setIsPrivateMode(false);
-          setAdminPassword("");
-          alert("인증에 실패했습니다. 암호를 다시 확인해 주세요.");
+          throw new Error('인증에 실패했습니다. 암호를 다시 확인해 주세요.');
         }
       } else {
         setIsPrivateMode(false);
         setAdminPassword("");
+        return true;
       }
     } catch (error) {
       console.error("Data Fetch Error:", error);
       setIsPrivateMode(false);
       setAdminPassword("");
       if (password) alert(error.message);
+      return false; // 실패 반환
     }
   };
 
   const togglePrivateMode = () => {
     if (!isPrivateMode) {
-      const input = prompt("ADMIN_SECURE 암호를 입력하세요:");
-      if (input) {
-        fetchDashboardData(input);
-      }
+      setShowLoginModal(true); // prompt 대신 모달 띄우기
     } else {
-      fetchDashboardData("");
+      fetchDashboardData(""); // 로그아웃 처리
     }
   };
 
-  // customPath 배열을 받아 저장할 수 있도록 파라미터 추가
   const pushPage = (id, title, icon, customPath = []) => setHistory(prev => [...prev, { id, title, icon, customPath }]);
   const popPage = () => history.length > 1 && setHistory(prev => prev.slice(0, -1));
   const jumpTo = (index) => setHistory(prev => prev.slice(0, index + 1));
@@ -94,10 +95,50 @@ export const AppProvider = ({ children }) => {
       isPrivateMode, togglePrivateMode, history, currentPage,
       pushPage, popPage, jumpTo, realTimeData,
       adminPassword, RUNNING_WORKER_URL,
-      BIKE_WORKER_URL, // ✅ 추가: B구역이 워커와 통신할 수 있게 무전기 증설
-      regionBState, setRegionBState // ✅ B구역 메모리 공급
+      BIKE_WORKER_URL,
+      regionBState, setRegionBState
     }}>
       {children}
+      
+      {/* ✅ 커스텀 로그인 모달 추가 (한/영 픽스 및 보안 강화) */}
+      {showLoginModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-white/10 p-6 rounded-3xl shadow-2xl w-80 flex flex-col gap-4 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 justify-center mb-2">
+              <div className="p-3 bg-indigo-500/20 rounded-full text-indigo-400">
+                <Key size={24} />
+              </div>
+              <h3 className="text-lg font-black text-white tracking-widest">ADMIN_SECURE</h3>
+            </div>
+            
+            <form 
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const pwd = e.target.password.value;
+                if (!pwd) return;
+                const success = await fetchDashboardData(pwd);
+                if (success) setShowLoginModal(false);
+              }}
+              className="flex flex-col gap-4"
+            >
+              <input
+                name="password"
+                type="password"
+                autoFocus
+                autoComplete="off" // 자동완성 방지
+                style={{ imeMode: 'disabled' }} // 🚨 핵심: 한글 입력기 강제 차단 (영문 고정)
+                placeholder="Password"
+                className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-center text-white tracking-widest focus:border-indigo-500/50 outline-none transition-colors"
+              />
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setShowLoginModal(false)} className="flex-1 py-3 rounded-xl font-bold text-sm text-slate-400 hover:bg-white/5 transition-colors">취소</button>
+                <button type="submit" className="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-500/30 transition-colors">접속</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </AppContext.Provider>
   );
 };
@@ -128,20 +169,17 @@ const Layout = ({ children }) => {
 
   return (
     <div className="min-h-screen p-4 flex flex-col bg-base-bg text-white">
-      {/* ✅ Basecamp 로고/글자 완전히 삭제, 우측 정렬된 인증 버튼만 유지 */}
       <header className="flex justify-end items-center mb-6">
         <button 
           onClick={togglePrivateMode} 
-          className={`px-4 py-2 rounded-full text-[10px] font-black tracking-[0.15em] border backdrop-blur-xl ${isPrivateMode ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' : 'bg-slate-800/40 text-slate-400 border-white/10'}`}
+          className={`px-4 py-2 rounded-full text-[10px] font-black tracking-[0.15em] border backdrop-blur-xl transition-all shadow-lg ${isPrivateMode ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 hover:bg-emerald-500/30' : 'bg-slate-800/40 text-slate-400 border-white/10 hover:bg-white/10'}`}
         >
           {isPrivateMode ? 'ADMIN_SECURE' : 'GUEST_ACCESS'}
         </button>
       </header>
       
-      {/* 3단계 지도 화면일 때는 A구역용 빵판 숨김 */}
       {currentPage.id !== 'bike-map' && <Breadcrumbs />}
       
-      {/* ✅ 지도가 화면 바닥까지 팽창하도록 래퍼에 flex-1 추가 */}
       <div className="flex-1 flex flex-col w-full h-full">
         {children}
       </div>
@@ -195,14 +233,10 @@ const AppContent = () => {
       {currentPage.id === 'home' ? <Dashboard /> : (
         <>
           {currentPage.id === 'bike-map' ? (
-            /* ✅ 지도 컨테이너: flex-1을 통해 남은 공간 100% 강제 팽창 */
             <div className="flex flex-col flex-1 w-full animate-in zoom-in-95 duration-500">
-              
-              {/* ✅ 3단계 네비게이션 (오빠의 2단계 이미지 룩 유지 + 완벽한 기억 복구 로직) */}
               <div className="flex items-center gap-3 mb-4 shrink-0">
                 <button 
                   onClick={() => {
-                    // 뒤로가기 시 2단계 상태로 완벽 복구
                     if (currentPage.customPath && currentPage.customPath.length > 0) {
                       setRegionBState(prev => ({
                         ...prev,
@@ -233,7 +267,6 @@ const AppContent = () => {
                       <button
                         onClick={() => { 
                           if (i < currentPage.customPath.length - 1) {
-                            // 중간 빵판 누를 때 해당 단계로 정확히 복구
                             setRegionBState(prev => ({
                               ...prev,
                               step: i + 1,
@@ -251,7 +284,6 @@ const AppContent = () => {
                 </div>
               </div>
 
-              {/* ✅ 지도가 진짜로 바닥 끝까지 확장되도록 absolute inset-0 적용 */}
               <div className="flex-1 w-full relative rounded-[2.5rem] overflow-hidden border border-white/5 shadow-2xl min-h-[500px]">
                 <div className="absolute inset-0">
                   <BikeRouteFullMapView title={currentPage.title} />
