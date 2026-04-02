@@ -29,6 +29,12 @@ export const BikeRouteFullMapView = ({ title }) => {
   const markersRef = useRef({ start: null, goal: null, waypoints: [] });
   const coordsRef = useRef({ start: null, goal: null, waypoints: [] });
 
+  // ✅ 리액트 클로저(Closure) 덫 방지용 Ref: 이벤트 리스너가 항상 최신 isEditing 값을 알 수 있게 함
+  const isEditingRef = useRef(isEditing);
+  useEffect(() => {
+    isEditingRef.current = isEditing;
+  }, [isEditing]);
+
   // 1. D1 DB 로드
   useEffect(() => {
     if (!BIKE_WORKER_URL) return;
@@ -54,12 +60,10 @@ export const BikeRouteFullMapView = ({ title }) => {
       .catch(err => console.error("DB 로드 실패:", err));
   }, [BIKE_WORKER_URL, title]);
 
-  // 2. 네이버 지도 초기화 (PC 우클릭 + 모바일 롱탭 센서 동시 탑재)
+  // ✅ [엔진 1] 네이버 지도 최초 생성 및 이벤트 부착 (단 1번만 실행됨)
   useEffect(() => {
-    if (!mapRef.current || !routeData) return;
-    
-    if (!window.naver || !window.naver.maps) {
-      setIsMapEngineMissing(true);
+    if (!mapRef.current || !window.naver || !window.naver.maps) {
+      if(!window.naver) setIsMapEngineMissing(true);
       return;
     }
     setIsMapEngineMissing(false);
@@ -68,36 +72,48 @@ export const BikeRouteFullMapView = ({ title }) => {
       mapInstance.current = new window.naver.maps.Map(mapRef.current, {
         center: new window.naver.maps.LatLng(36.3504, 127.3845),
         zoom: 7,
-        mapTypeId: window.naver.maps.MapTypeId[mapType],
+        mapTypeId: window.naver.maps.MapTypeId.SATELLITE,
         disableKineticPan: false,
       });
 
-      // ✅ 1. 데스크톱(윈도우/맥) 우클릭 센서
-      mapRef.current.addEventListener('contextmenu', (e) => {
-        e.preventDefault(); 
-        if (!isEditing) return;
-
-        const proj = mapInstance.current.getProjection();
-        const offset = mapRef.current.getBoundingClientRect();
-        const point = new window.naver.maps.Point(e.clientX - offset.left, e.clientY - offset.top);
-        const latlng = proj.fromCoordToLatLng(point);
-
-        setContextMenu({ x: e.clientX, y: e.clientY, latlng });
+      // 🖱️ 데스크톱 우클릭 이벤트
+      window.naver.maps.Event.addListener(mapInstance.current, 'rightclick', (e) => {
+        if (!isEditingRef.current) return;
+        const clientX = e.domEvent ? e.domEvent.clientX : (e.pointerEvent ? e.pointerEvent.clientX : 0);
+        const clientY = e.domEvent ? e.domEvent.clientY : (e.pointerEvent ? e.pointerEvent.clientY : 0);
+        if (clientX > 0) setContextMenu({ x: clientX, y: clientY, latlng: e.coord });
       });
 
-      // ✅ 2. 📱 모바일(스마트폰) 길게 누르기(롱탭) 센서 추가!
+      // 📱 모바일 롱탭 이벤트
       window.naver.maps.Event.addListener(mapInstance.current, 'longtap', (e) => {
-        if (!isEditing) return;
-        setContextMenu({ x: e.pointerEvent.clientX, y: e.pointerEvent.clientY, latlng: e.coord });
+        if (!isEditingRef.current) return;
+        const clientX = e.domEvent ? e.domEvent.clientX : (e.pointerEvent ? e.pointerEvent.clientX : 0);
+        const clientY = e.domEvent ? e.domEvent.clientY : (e.pointerEvent ? e.pointerEvent.clientY : 0);
+        if (clientX > 0) setContextMenu({ x: clientX, y: clientY, latlng: e.coord });
       });
 
-      // 메뉴 닫기 센서
+      // 메뉴 닫기
       window.naver.maps.Event.addListener(mapInstance.current, 'click', () => setContextMenu(null));
+      window.naver.maps.Event.addListener(mapInstance.current, 'dragstart', () => setContextMenu(null));
+    }
+  }, []); // 의존성 배열을 비워서 무한 렌더링 충돌 완벽 차단
+
+  // ✅ [엔진 2] 지도 타입(위성/일반) 변경 전용 엔진
+  useEffect(() => {
+    if (mapInstance.current && window.naver && window.naver.maps) {
+      mapInstance.current.setMapTypeId(window.naver.maps.MapTypeId[mapType]);
+    }
+  }, [mapType]);
+
+  // ✅ [엔진 3] 경로(Polyline) 그리기 전용 엔진
+  useEffect(() => {
+    if (!mapInstance.current || !routeData || !window.naver) return;
+
+    if (polylineInstance.current) {
+      polylineInstance.current.setMap(null);
     }
 
-    if (polylineInstance.current) polylineInstance.current.setMap(null);
-
-    if (routeData.path_data?.length > 0 && mapInstance.current) {
+    if (routeData.path_data?.length > 0) {
       const path = routeData.path_data.map(p => new window.naver.maps.LatLng(p.lat, p.lng));
       polylineInstance.current = new window.naver.maps.Polyline({
         map: mapInstance.current,
@@ -113,7 +129,9 @@ export const BikeRouteFullMapView = ({ title }) => {
       path.forEach(p => bounds.extend(p));
       mapInstance.current.fitBounds(bounds, { margin: 50 });
     }
-  }, [routeData, mapType, isEditing]); 
+  }, [routeData?.path_data]); // path_data가 바뀔 때만 다시 그림
+
+  // =========================================================
 
   const getAddressFromCoords = (latlng) => {
     return new Promise((resolve) => {
