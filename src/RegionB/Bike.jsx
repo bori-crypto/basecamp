@@ -29,7 +29,7 @@ export const BikeRouteFullMapView = ({ title }) => {
   const markersRef = useRef({ start: null, goal: null, waypoints: [] });
   const coordsRef = useRef({ start: null, goal: null, waypoints: [] });
 
-  // ✅ 오빠의 우클릭 코드가 꼬이지 않도록 돕는 안전 메모리 장치
+  // ✅ 오리지널 우클릭 센서용 안전 장치
   const isEditingRef = useRef(isEditing);
   useEffect(() => {
     isEditingRef.current = isEditing;
@@ -60,7 +60,7 @@ export const BikeRouteFullMapView = ({ title }) => {
       .catch(err => console.error("DB 로드 실패:", err));
   }, [BIKE_WORKER_URL, title]);
 
-  // 2. ✅ 오빠의 완벽했던 오리지널 네이버 지도 엔진 복구
+  // 2. 오리지널 네이버 지도 엔진 (오빠가 성공시킨 버전 유지)
   useEffect(() => {
     if (!mapRef.current || !routeData) return;
     
@@ -70,7 +70,6 @@ export const BikeRouteFullMapView = ({ title }) => {
     }
     setIsMapEngineMissing(false);
 
-    // 지도 상자가 비어있으면 새로 생성
     if (!mapInstance.current || mapRef.current.childNodes.length === 0) {
       mapInstance.current = new window.naver.maps.Map(mapRef.current, {
         center: new window.naver.maps.LatLng(36.3504, 127.3845),
@@ -79,13 +78,13 @@ export const BikeRouteFullMapView = ({ title }) => {
         disableKineticPan: false,
       });
 
-      // 🖱️ 오빠가 검증했던 PC 우클릭 센서 (isEditingRef로 잠금장치만 걸어둠)
+      // PC 우클릭 센서
       window.naver.maps.Event.addListener(mapInstance.current, 'rightclick', (e) => {
         if (!isEditingRef.current) return;
         setContextMenu({ x: e.pointerEvent.clientX, y: e.pointerEvent.clientY, latlng: e.coord });
       });
 
-      // 📱 오빠가 검증했던 모바일 롱탭 센서
+      // 모바일 롱탭 센서
       window.naver.maps.Event.addListener(mapInstance.current, 'longtap', (e) => {
         if (!isEditingRef.current) return;
         setContextMenu({ x: e.pointerEvent.clientX, y: e.pointerEvent.clientY, latlng: e.coord });
@@ -94,7 +93,6 @@ export const BikeRouteFullMapView = ({ title }) => {
       window.naver.maps.Event.addListener(mapInstance.current, 'click', () => setContextMenu(null));
       window.naver.maps.Event.addListener(mapInstance.current, 'dragstart', () => setContextMenu(null));
 
-      // 화면 리사이즈 찌그러짐 방지 로직 복구
       setTimeout(() => {
         if (mapInstance.current) {
           window.dispatchEvent(new Event('resize'));
@@ -102,11 +100,9 @@ export const BikeRouteFullMapView = ({ title }) => {
         }
       }, 300);
     } else {
-      // 맵이 이미 있으면 타입(위성/일반)만 업데이트
       mapInstance.current.setMapTypeId(window.naver.maps.MapTypeId[mapType]);
     }
 
-    // 경로 초기화 및 다시 그리기
     if (polylineInstance.current) polylineInstance.current.setMap(null);
 
     if (routeData.path_data?.length > 0 && mapInstance.current) {
@@ -125,9 +121,7 @@ export const BikeRouteFullMapView = ({ title }) => {
       path.forEach(p => bounds.extend(p));
       mapInstance.current.fitBounds(bounds, { margin: 50 });
     }
-  }, [routeData, mapType]); // 🚨 이게 핵심! 오리지널 의존성 배열로 돌려놔서 빈 화면 버그 타파!
-
-  // =========================================================
+  }, [routeData, mapType]);
 
   const getAddressFromCoords = (latlng) => {
     return new Promise((resolve) => {
@@ -322,10 +316,12 @@ export const BikeRouteFullMapView = ({ title }) => {
                   <div className="flex items-center gap-3"><Flag size={18} className="text-red-400 shrink-0"/><input placeholder="도착지" value={goalPoint} onChange={e => setGoalPoint(e.target.value)} className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white outline-none"/></div>
                 </div>
                 
+                {/* ✅ 수정된 거리/일정 입력창: min-w-0을 주어 밖으로 나가는 현상 방지 */}
                 <div className="flex gap-3 mt-1">
-                  <input placeholder="일정" value={routeData.duration || ''} onChange={e => setRouteData({...routeData, duration: e.target.value})} className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white outline-none"/>
-                  <input placeholder="거리" value={routeData.distance || ''} onChange={e => setRouteData({...routeData, distance: e.target.value})} className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white outline-none"/>
+                  <input placeholder="일정" value={routeData.duration || ''} onChange={e => setRouteData({...routeData, duration: e.target.value})} className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white outline-none"/>
+                  <input placeholder="거리" value={routeData.distance || ''} onChange={e => setRouteData({...routeData, distance: e.target.value})} className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white outline-none"/>
                 </div>
+                
                 <textarea placeholder="메모" value={routeData.memo} onChange={e => setRouteData({...routeData, memo: e.target.value})} className="bg-white/5 border border-white/10 rounded-xl p-3 text-sm h-20 outline-none text-slate-300 resize-none mt-1" />
                 
                 <div className="flex justify-between items-center mt-2 border-t border-white/10 pt-4">
