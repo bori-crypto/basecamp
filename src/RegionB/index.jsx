@@ -1,6 +1,6 @@
 import React, { useEffect, useContext } from 'react';
 import {
-  Camera, Bike, Footprints, Fuel, Mountain, Waves, Dumbbell, ChevronLeft, Sparkles
+  Camera, Bike, Footprints, Fuel, Mountain, Waves, Dumbbell, ChevronLeft, Sparkles, Wallet
 } from 'lucide-react';
 
 import MemoryArchive from './MemoryArchive';
@@ -45,7 +45,6 @@ const RegionB = ({ isAdmin, data }) => {
   const setPath = (p) => setRegionBState(prev => ({ ...prev, path: p }));
   const setSelectedCategory = (c) => setRegionBState(prev => ({ ...prev, selectedCategory: c }));
 
-  // ✅ 오빠의 설계도에 맞춰 Bike Travel(travel) 트리를 3단계 구조로 확장
   const menuData = {
     photos: {
       label: '나의 기록',
@@ -58,7 +57,8 @@ const RegionB = ({ isAdmin, data }) => {
       icon: <Bike size={32} />,
       color: 'from-indigo-500 to-purple-400',
       sub: [
-        { label: '여행기록', detail: ['2026', '2025', '2024', '경비내역'] }, 
+        // ✅ detail 배열에서 '경비내역'을 빼고 상단 고정 버튼(actionBtn)으로 분리
+        { label: '여행기록', detail: ['2026', '2025', '2024'], actionBtn: '경비내역' }, 
         { label: '여행계획', detail: [] }
       ]
     },
@@ -105,13 +105,11 @@ const RegionB = ({ isAdmin, data }) => {
     setStep(2);
   };
 
-  // ✅ 3단계로 들어가는 클릭 이벤트 센서 추가
   const handleDetailClick = (detailItem) => {
     setPath([...path, detailItem]);
     setStep(3);
   };
 
-  // ✅ 무한 뎁스(Depth) 이동이 가능하도록 스마트하게 압축된 점프 로직
   const jumpToStep = (targetStep) => {
     if (targetStep === 0) {
       setRegionBState({ step: 0, path: [], selectedCategory: null });
@@ -189,7 +187,6 @@ const RegionB = ({ isAdmin, data }) => {
           </div>
         ) : (
           <div className="h-full">
-            {/* ✅ step 3: 여행기록 안의 특정 연도를 눌렀을 때만 BikeTravel(지도)을 띄움 */}
             {selectedCategory === 'travel' && step === 3 ? (
               ['2026', '2025', '2024'].includes(path[2]) ? (
                 <BikeTravel 
@@ -220,16 +217,33 @@ const RegionB = ({ isAdmin, data }) => {
                 {path[2]} 상세 모듈 준비 중...
               </div>
             ) : (
-              /* ✅ step 2: 제네릭 디테일 탐색 뷰 (클릭 시 step 3로 진입하도록 handleDetailClick 연결) */
-              <div className={`p-6 rounded-2xl bg-gradient-to-br ${menuData[selectedCategory].color} text-white`}>
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="p-3 bg-white/20 rounded-xl">{React.cloneElement(menuData[selectedCategory].icon, { size: 24 })}</div>
-                  <div>
-                    <h2 className="text-2xl font-bold">{path[1]}</h2>
-                    <p className="text-sm opacity-80 uppercase tracking-widest mt-1">Detail Exploration</p>
+              /* ✅ step 2: 제네릭 디테일 탐색 뷰 (고정 헤더 + 스크롤 리스트) */
+              <div className={`p-6 rounded-2xl bg-gradient-to-br ${menuData[selectedCategory].color} text-white flex flex-col h-full overflow-hidden`}>
+                
+                {/* 📌 고정 헤더 영역 (타이틀 + 우측 고정 버튼) */}
+                <div className="flex items-center justify-between mb-6 shrink-0">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 bg-white/20 rounded-xl">{React.cloneElement(menuData[selectedCategory].icon, { size: 24 })}</div>
+                    <div>
+                      <h2 className="text-2xl font-bold">{path[1]}</h2>
+                      <p className="text-sm opacity-80 uppercase tracking-widest mt-1">Detail Exploration</p>
+                    </div>
                   </div>
+                  
+                  {/* 📌 우측 고정 액션 버튼 ('경비내역' 등) */}
+                  {menuData[selectedCategory].sub.find(s => s.label === path[1])?.actionBtn && (
+                    <button
+                      onClick={() => handleDetailClick(menuData[selectedCategory].sub.find(s => s.label === path[1]).actionBtn)}
+                      className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl text-sm font-bold shadow-md transition-all border border-white/20 backdrop-blur-md flex items-center gap-2"
+                    >
+                      <Wallet size={16} className="text-white/80" />
+                      {menuData[selectedCategory].sub.find(s => s.label === path[1]).actionBtn}
+                    </button>
+                  )}
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                {/* 📌 스크롤 가능한 하단 리스트 영역 */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto custom-scrollbar pb-2 pr-2">
                   {menuData[selectedCategory].sub.find(s => s.label === path[1])?.detail?.map((item, idx) => (
                     <div 
                       key={idx} 
