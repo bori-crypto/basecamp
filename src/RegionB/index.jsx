@@ -35,19 +35,17 @@ const SecureImage = ({ src, alt, className }) => {
 };
 
 const RegionB = ({ isAdmin, data }) => {
-  // ✅ 핵심 수정: AppContext에서 B구역의 상태 메모리를 가져옵니다!
   const { RUNNING_WORKER_URL, adminPassword, pushPage, regionBState, setRegionBState } = useContext(AppContext);
   
-  // 전역 상태를 지역 변수처럼 편하게 쓰기 위해 구조분해 할당
   const step = regionBState?.step || 0;
   const path = regionBState?.path || [];
   const selectedCategory = regionBState?.selectedCategory || null;
 
-  // 상태 업데이트 함수도 사령부 메모리를 업데이트하도록 맵핑
   const setStep = (s) => setRegionBState(prev => ({ ...prev, step: s }));
   const setPath = (p) => setRegionBState(prev => ({ ...prev, path: p }));
   const setSelectedCategory = (c) => setRegionBState(prev => ({ ...prev, selectedCategory: c }));
 
+  // ✅ 오빠의 설계도에 맞춰 Bike Travel(travel) 트리를 3단계 구조로 확장
   const menuData = {
     photos: {
       label: '나의 기록',
@@ -59,7 +57,10 @@ const RegionB = ({ isAdmin, data }) => {
       label: 'Bike Travel',
       icon: <Bike size={32} />,
       color: 'from-indigo-500 to-purple-400',
-      sub: [{ label: '2026' }, { label: '2025' }, { label: '2024' }]
+      sub: [
+        { label: '여행기록', detail: ['2026', '2025', '2024', '경비내역'] }, 
+        { label: '여행계획', detail: [] }
+      ]
     },
     running: {
       label: '러닝 기록',
@@ -104,18 +105,24 @@ const RegionB = ({ isAdmin, data }) => {
     setStep(2);
   };
 
+  // ✅ 3단계로 들어가는 클릭 이벤트 센서 추가
+  const handleDetailClick = (detailItem) => {
+    setPath([...path, detailItem]);
+    setStep(3);
+  };
+
+  // ✅ 무한 뎁스(Depth) 이동이 가능하도록 스마트하게 압축된 점프 로직
   const jumpToStep = (targetStep) => {
     if (targetStep === 0) {
       setRegionBState({ step: 0, path: [], selectedCategory: null });
-    } else if (targetStep === 1 && step >= 2) {
-      setStep(1);
-      setPath([path[0]]);
+    } else if (targetStep < step) {
+      setStep(targetStep);
+      setPath(path.slice(0, targetStep));
     }
   };
 
   const goBack = () => {
-    if (step === 2) jumpToStep(1);
-    else jumpToStep(0);
+    if (step > 0) jumpToStep(step - 1);
   };
 
   return (
@@ -135,7 +142,7 @@ const RegionB = ({ isAdmin, data }) => {
               <React.Fragment key={i}>
                 <span className="text-white/20 select-none">{'>'}</span>
                 <button
-                  onClick={() => i === 0 && step > 1 && jumpToStep(1)}
+                  onClick={() => { if (i < step - 1) jumpToStep(i + 1); }}
                   className={`transition-colors whitespace-pre ${i === path.length - 1 ? "text-slate-100 font-bold cursor-default" : "hover:text-slate-300 cursor-pointer"}`}
                 >
                   {p}
@@ -182,15 +189,21 @@ const RegionB = ({ isAdmin, data }) => {
           </div>
         ) : (
           <div className="h-full">
-            {selectedCategory === 'travel' ? (
-              <BikeTravel 
-                step={step} 
-                path={path} 
-                onSelect={(routeName) => {
-                  // ✅ 3단계 지도 화면 호출 시 경로(path) 데이터까지 사령부(App.jsx)로 완벽히 전송!
-                  pushPage('bike-map', routeName, Bike, [...path, routeName]);
-                }} 
-              />
+            {/* ✅ step 3: 여행기록 안의 특정 연도를 눌렀을 때만 BikeTravel(지도)을 띄움 */}
+            {selectedCategory === 'travel' && step === 3 ? (
+              ['2026', '2025', '2024'].includes(path[2]) ? (
+                <BikeTravel 
+                  step={step} 
+                  path={path} 
+                  onSelect={(routeName) => {
+                    pushPage('bike-map', routeName, Bike, [...path, routeName]);
+                  }} 
+                />
+              ) : (
+                <div className="flex items-center justify-center h-full text-slate-400 p-10 bg-white/5 border border-white/10 rounded-2xl">
+                  {path[2]} 데이터 모듈 준비 중...
+                </div>
+              )
             ) : selectedCategory === 'photos' ? (
               <MemoryArchive
                 selectedSub={menuData.photos.sub.find(s => s.label === path[1])}
@@ -202,7 +215,12 @@ const RegionB = ({ isAdmin, data }) => {
                 workerUrl={RUNNING_WORKER_URL}
                 adminPassword={adminPassword}
               />
+            ) : step === 3 ? (
+              <div className="flex items-center justify-center h-full text-slate-400 p-10 bg-white/5 border border-white/10 rounded-2xl">
+                {path[2]} 상세 모듈 준비 중...
+              </div>
             ) : (
+              /* ✅ step 2: 제네릭 디테일 탐색 뷰 (클릭 시 step 3로 진입하도록 handleDetailClick 연결) */
               <div className={`p-6 rounded-2xl bg-gradient-to-br ${menuData[selectedCategory].color} text-white`}>
                 <div className="flex items-center gap-3 mb-6">
                   <div className="p-3 bg-white/20 rounded-xl">{React.cloneElement(menuData[selectedCategory].icon, { size: 24 })}</div>
@@ -213,7 +231,11 @@ const RegionB = ({ isAdmin, data }) => {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {menuData[selectedCategory].sub.find(s => s.label === path[1])?.detail?.map((item, idx) => (
-                    <div key={idx} className="bg-black/20 p-4 rounded-xl flex items-center gap-3 hover:bg-black/30 transition-colors">
+                    <div 
+                      key={idx} 
+                      onClick={() => handleDetailClick(item)}
+                      className="bg-black/20 p-4 rounded-xl flex items-center gap-3 hover:bg-black/30 transition-colors cursor-pointer"
+                    >
                       <div className="w-2 h-2 rounded-full bg-white/50" />
                       <span className="font-medium">{item}</span>
                     </div>
