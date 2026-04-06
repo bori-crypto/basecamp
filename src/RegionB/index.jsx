@@ -57,7 +57,6 @@ const RegionB = ({ isAdmin, data }) => {
       icon: <Bike size={32} />,
       color: 'from-indigo-500 to-purple-400',
       sub: [
-        // ✅ detail 배열에서 '경비내역'을 빼고 상단 고정 버튼(actionBtn)으로 분리
         { label: '여행기록', detail: ['2026', '2025', '2024'], actionBtn: '경비내역' }, 
         { label: '여행계획', detail: [] }
       ]
@@ -217,41 +216,42 @@ const RegionB = ({ isAdmin, data }) => {
                 {path[2]} 상세 모듈 준비 중...
               </div>
             ) : (
-              /* ✅ step 2: 제네릭 디테일 탐색 뷰 (고정 헤더 + 스크롤 리스트) */
-              <div className={`p-6 rounded-2xl bg-gradient-to-br ${menuData[selectedCategory].color} text-white flex flex-col h-full overflow-hidden`}>
+              /* ✅ 수정된 제네릭 디테일 탐색 뷰 (글래스모피즘 테마로 원상 복구) */
+              <div className="p-6 rounded-2xl bg-white/5 border border-white/10 text-white flex flex-col h-full overflow-hidden backdrop-blur-md shadow-2xl">
                 
-                {/* 📌 고정 헤더 영역 (타이틀 + 우측 고정 버튼) */}
                 <div className="flex items-center justify-between mb-6 shrink-0">
-                  <div className="flex items-center gap-3">
-                    <div className="p-3 bg-white/20 rounded-xl">{React.cloneElement(menuData[selectedCategory].icon, { size: 24 })}</div>
+                  <div className="flex items-center gap-4">
+                    {/* 카테고리 컬러는 아이콘 상자에만 은은하게 적용 */}
+                    <div className={`p-3 rounded-xl bg-gradient-to-br ${menuData[selectedCategory].color} shadow-lg`}>
+                      {React.cloneElement(menuData[selectedCategory].icon, { size: 24, className: "text-white" })}
+                    </div>
                     <div>
-                      <h2 className="text-2xl font-bold">{path[1]}</h2>
-                      <p className="text-sm opacity-80 uppercase tracking-widest mt-1">Detail Exploration</p>
+                      <h2 className="text-2xl font-bold tracking-tight">{path[1]}</h2>
+                      <p className="text-xs opacity-70 uppercase tracking-widest mt-1">Detail Exploration</p>
                     </div>
                   </div>
                   
-                  {/* 📌 우측 고정 액션 버튼 ('경비내역' 등) */}
                   {menuData[selectedCategory].sub.find(s => s.label === path[1])?.actionBtn && (
                     <button
                       onClick={() => handleDetailClick(menuData[selectedCategory].sub.find(s => s.label === path[1]).actionBtn)}
-                      className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl text-sm font-bold shadow-md transition-all border border-white/20 backdrop-blur-md flex items-center gap-2"
+                      className="bg-white/5 hover:bg-white/10 px-4 py-2.5 rounded-xl text-sm font-bold shadow-md transition-all border border-white/10 flex items-center gap-2"
                     >
-                      <Wallet size={16} className="text-white/80" />
-                      {menuData[selectedCategory].sub.find(s => s.label === path[1]).actionBtn}
+                      <Wallet size={16} className="text-indigo-400" />
+                      <span className="text-slate-200">{menuData[selectedCategory].sub.find(s => s.label === path[1]).actionBtn}</span>
                     </button>
                   )}
                 </div>
 
-                {/* 📌 스크롤 가능한 하단 리스트 영역 */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto custom-scrollbar pb-2 pr-2">
                   {menuData[selectedCategory].sub.find(s => s.label === path[1])?.detail?.map((item, idx) => (
                     <div 
                       key={idx} 
                       onClick={() => handleDetailClick(item)}
-                      className="bg-black/20 p-4 rounded-xl flex items-center gap-3 hover:bg-black/30 transition-colors cursor-pointer"
+                      className="bg-white/5 border border-white/5 p-4 rounded-xl flex items-center gap-3 hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer shadow-sm group"
                     >
-                      <div className="w-2 h-2 rounded-full bg-white/50" />
-                      <span className="font-medium">{item}</span>
+                      {/* 리스트 아이템 앞에도 컬러 포인트를 살짝 줌 */}
+                      <div className={`w-2 h-2 rounded-full bg-gradient-to-br ${menuData[selectedCategory].color} opacity-70 group-hover:opacity-100 transition-opacity`} />
+                      <span className="font-medium text-slate-300 group-hover:text-white transition-colors">{item}</span>
                     </div>
                   ))}
                 </div>
