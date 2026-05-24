@@ -6,6 +6,7 @@ import {
 import MemoryArchive from './MemoryArchive';
 import RunningLog from './RunningLog';
 import BikeTravel from './Bike'; 
+import TravelExpense from './TravelExpense'; // ✅ 신규 경비내역 모듈 임포트
 import { AppContext } from '../App';
 
 const SecureImage = ({ src, alt, className }) => {
@@ -187,7 +188,10 @@ const RegionB = ({ isAdmin, data }) => {
         ) : (
           <div className="h-full">
             {selectedCategory === 'travel' && step === 3 ? (
-              ['2026', '2025', '2024'].includes(path[2]) ? (
+              path[2] === '경비내역' ? (
+                /* ✅ '경비내역' 진입 시 완벽 분리된 신규 모듈 실행 */
+                <TravelExpense isAdmin={isAdmin} />
+              ) : ['2026', '2025', '2024'].includes(path[2]) ? (
                 <BikeTravel 
                   step={step} 
                   path={path} 
@@ -196,7 +200,7 @@ const RegionB = ({ isAdmin, data }) => {
                   }} 
                 />
               ) : (
-                <div className="flex items-center justify-center h-full text-slate-400 p-10 bg-white/5 border border-white/10 rounded-2xl">
+                <div className="p-10 text-center text-slate-400 bg-white/5 border border-white/10 rounded-2xl">
                   {path[2]} 데이터 모듈 준비 중...
                 </div>
               )
@@ -212,16 +216,13 @@ const RegionB = ({ isAdmin, data }) => {
                 adminPassword={adminPassword}
               />
             ) : step === 3 ? (
-              <div className="flex items-center justify-center h-full text-slate-400 p-10 bg-white/5 border border-white/10 rounded-2xl">
+              <div className="p-10 text-center text-slate-400 bg-white/5 border border-white/10 rounded-2xl">
                 {path[2]} 상세 모듈 준비 중...
               </div>
             ) : (
-              /* ✅ 수정된 제네릭 디테일 탐색 뷰 (글래스모피즘 테마로 원상 복구) */
               <div className="p-6 rounded-2xl bg-white/5 border border-white/10 text-white flex flex-col h-full overflow-hidden backdrop-blur-md shadow-2xl">
-                
                 <div className="flex items-center justify-between mb-6 shrink-0">
                   <div className="flex items-center gap-4">
-                    {/* 카테고리 컬러는 아이콘 상자에만 은은하게 적용 */}
                     <div className={`p-3 rounded-xl bg-gradient-to-br ${menuData[selectedCategory].color} shadow-lg`}>
                       {React.cloneElement(menuData[selectedCategory].icon, { size: 24, className: "text-white" })}
                     </div>
@@ -249,7 +250,6 @@ const RegionB = ({ isAdmin, data }) => {
                       onClick={() => handleDetailClick(item)}
                       className="bg-white/5 border border-white/5 p-4 rounded-xl flex items-center gap-3 hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer shadow-sm group"
                     >
-                      {/* 리스트 아이템 앞에도 컬러 포인트를 살짝 줌 */}
                       <div className={`w-2 h-2 rounded-full bg-gradient-to-br ${menuData[selectedCategory].color} opacity-70 group-hover:opacity-100 transition-opacity`} />
                       <span className="font-medium text-slate-300 group-hover:text-white transition-colors">{item}</span>
                     </div>
